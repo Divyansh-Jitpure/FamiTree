@@ -48,7 +48,7 @@ export async function createFamilyMemberAction(input: CreateFamilyMemberInput) {
       displayName: [firstName, input.lastName.trim()].filter(Boolean).join(" "),
       city: input.city.trim() || null,
       notes: input.note.trim() || null,
-      gender: relation,
+      primaryRelation: relation,
     },
   });
 

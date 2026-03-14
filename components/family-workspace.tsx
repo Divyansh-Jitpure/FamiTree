@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import type { Dictionary } from "@/lib/i18n/config";
+import { createFamilyMemberAction } from "@/lib/family/actions";
 import type { FamilyMemberView } from "@/lib/family/types";
 
 type HomeCopy = Dictionary["home"];
@@ -31,7 +33,7 @@ function createEmptyForm(home: HomeCopy): DraftForm {
   return {
     firstName: "",
     lastName: home.placeholders.lastName,
-    relation: "",
+    relation: home.relationOptions[0] ?? "",
     city: "",
     note: "",
   };
@@ -47,6 +49,9 @@ export function FamilyWorkspace({
   const [people, setPeople] = useState<FamilyMemberView[]>(initialPeople);
   const [form, setForm] = useState<DraftForm>(() => createEmptyForm(home));
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   useEffect(() => {
     if (source === "database") {
@@ -115,6 +120,28 @@ export function FamilyWorkspace({
     event.preventDefault();
 
     if (!form.firstName.trim() || !form.relation.trim()) {
+      setSubmitMessage(home.messages.invalid);
+      return;
+    }
+
+    if (source === "database" && treeId) {
+      const payload = { ...form, treeId };
+
+      startTransition(async () => {
+        const result = await createFamilyMemberAction(payload);
+
+        if (!result.ok) {
+          setSubmitMessage(
+            result.reason === "invalid_input" ? home.messages.invalid : home.messages.databaseUnavailable
+          );
+          return;
+        }
+
+        setForm(createEmptyForm(home));
+        setSubmitMessage(home.messages.savedToDatabase);
+        router.refresh();
+      });
+
       return;
     }
 
@@ -129,6 +156,7 @@ export function FamilyWorkspace({
 
     setPeople((current) => [nextPerson, ...current]);
     setForm(createEmptyForm(home));
+    setSubmitMessage(home.messages.savedToBrowser);
   }
 
   function resetWorkspace() {
@@ -137,6 +165,7 @@ export function FamilyWorkspace({
     if (source === "sample") {
       window.localStorage.removeItem(getStorageKey(locale));
     }
+    setSubmitMessage(null);
   }
 
   return (
@@ -242,6 +271,11 @@ export function FamilyWorkspace({
               {source === "database" ? home.databaseHelperText : home.sampleHelperText}
             </p>
           )}
+          {submitMessage ? (
+            <p className="mt-2 rounded-[1rem] border border-[var(--line)] bg-white/75 px-4 py-3 text-xs leading-6 text-[var(--muted)]">
+              {submitMessage}
+            </p>
+          ) : null}
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{home.fields.firstName}</span>
@@ -263,12 +297,17 @@ export function FamilyWorkspace({
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{home.fields.relation}</span>
-              <input
+              <select
                 value={form.relation}
                 onChange={(event) => handleChange("relation", event.target.value)}
-                placeholder={home.placeholders.relation}
                 className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-              />
+              >
+                {home.relationOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{home.fields.city}</span>
@@ -291,9 +330,10 @@ export function FamilyWorkspace({
             </label>
             <button
               type="submit"
+              disabled={isPending}
               className="w-full rounded-[1rem] bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white"
             >
-              {home.submitAction}
+              {isPending ? home.submitPending : home.submitAction}
             </button>
           </form>
         </aside>

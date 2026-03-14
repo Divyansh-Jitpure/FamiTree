@@ -24,6 +24,7 @@ model Person {
   lastName       String?
   displayName    String?
   gender         String?
+  primaryRelation String?
   dateOfBirth    DateTime?
   photoUrl       String?
   addressLine1   String?

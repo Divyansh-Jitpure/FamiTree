@@ -47,18 +47,33 @@
       "city": "शहर",
       "note": "नोट"
     },
+    "relationOptions": [
+      "अभिभावक",
+      "जीवनसाथी",
+      "बच्चा",
+      "भाई-बहन",
+      "दादा-दादी",
+      "रिश्तेदार"
+    ],
     "placeholders": {
       "firstName": "जॉन",
       "lastName": "जितपुरे",
-      "relation": "अभिभावक",
+      "relation": "रिश्ता चुनें",
       "city": "नागपुर",
       "note": "छोटा नोट लिखें"
     },
     "submitAction": "सदस्य सेव करें",
+    "submitPending": "सेव हो रहा है...",
     "defaultMeta": "लोकेशन अभी जोड़ी नहीं गई",
     "defaultTag": "फोटो",
     "noteTag": "नोट्स",
     "addressTag": "पता",
+    "messages": {
+      "invalid": "कृपया कम से कम पहला नाम और रिश्ता भरें।",
+      "savedToBrowser": "सदस्य इस browser के sample workspace में save हो गया।",
+      "savedToDatabase": "सदस्य family database में save हो गया।",
+      "databaseUnavailable": "अभी database save उपलब्ध नहीं है।"
+    },
     "canvasLabel": "ट्री कैनवास",
     "canvasTitle": "फैमिली स्ट्रक्चर प्रीव्यू",
     "canvasFilters": [

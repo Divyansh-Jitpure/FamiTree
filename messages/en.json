@@ -47,18 +47,33 @@
       "city": "City",
       "note": "Note"
     },
+    "relationOptions": [
+      "Parent",
+      "Spouse",
+      "Child",
+      "Sibling",
+      "Grandparent",
+      "Relative"
+    ],
     "placeholders": {
       "firstName": "John",
       "lastName": "Jitpure",
-      "relation": "Parent",
+      "relation": "Choose a relation",
       "city": "Nagpur",
       "note": "Add a short note"
     },
     "submitAction": "Save member",
+    "submitPending": "Saving...",
     "defaultMeta": "Location not added yet",
     "defaultTag": "Photo",
     "noteTag": "Notes",
     "addressTag": "Address",
+    "messages": {
+      "invalid": "Please add at least a first name and relation.",
+      "savedToBrowser": "Member saved in this browser sample workspace.",
+      "savedToDatabase": "Member saved to the family database.",
+      "databaseUnavailable": "Database save is not available right now."
+    },
     "canvasLabel": "Tree canvas",
     "canvasTitle": "Family structure preview",
     "canvasFilters": [

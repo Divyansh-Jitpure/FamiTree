@@ -11,6 +11,29 @@ function createSamplePeople(home: HomeCopy): FamilyMemberView[] {
   }));
 }
 
+async function ensureDefaultFamilyTree(prisma: Awaited<ReturnType<typeof getPrismaClient>>) {
+  if (!prisma) {
+    return null;
+  }
+
+  const existingTree = await prisma.familyTree.findFirst({
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  if (existingTree) {
+    return existingTree;
+  }
+
+  return prisma.familyTree.create({
+    data: {
+      title: "Jitpure Family Tree",
+      description: "Default family tree for the FamiTree workspace.",
+    },
+  });
+}
+
 function buildMeta(person: {
   city: string | null;
   state: string | null;
@@ -42,9 +65,19 @@ export async function getFamilyWorkspaceData(
       };
     }
 
-    const tree = await prisma.familyTree.findFirst({
-      orderBy: {
-        createdAt: "asc",
+    const baseTree = await ensureDefaultFamilyTree(prisma);
+
+    if (!baseTree) {
+      return {
+        treeId: null,
+        people: createSamplePeople(home),
+        source: "sample",
+      };
+    }
+
+    const tree = await prisma.familyTree.findUnique({
+      where: {
+        id: baseTree.id,
       },
       include: {
         people: {
@@ -55,11 +88,19 @@ export async function getFamilyWorkspaceData(
       },
     });
 
-    if (!tree || tree.people.length === 0) {
+    if (!tree) {
       return {
-        treeId: tree?.id ?? null,
+        treeId: baseTree.id,
         people: createSamplePeople(home),
-        source: "sample",
+        source: "database",
+      };
+    }
+
+    if (tree.people.length === 0) {
+      return {
+        treeId: tree.id,
+        people: createSamplePeople(home),
+        source: "database",
       };
     }
 
@@ -68,7 +109,7 @@ export async function getFamilyWorkspaceData(
       name:
         person.displayName?.trim() ||
         [person.firstName, person.lastName].filter(Boolean).join(" "),
-      role: person.gender || home.placeholders.relation,
+      role: person.primaryRelation || home.placeholders.relation,
       meta: buildMeta(person) || home.defaultMeta,
       tags: [
         person.photoUrl ? home.defaultTag : home.addressTag,
