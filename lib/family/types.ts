@@ -6,8 +6,18 @@ export type FamilyMemberView = {
   tags: string[];
 };
 
+export type FamilyRelationshipView = {
+  id: string;
+  fromId: string;
+  toId: string;
+  fromName: string;
+  toName: string;
+  type: string;
+};
+
 export type FamilyWorkspaceData = {
   treeId: string | null;
   people: FamilyMemberView[];
+  relationships: FamilyRelationshipView[];
   source: "database" | "sample";
 };

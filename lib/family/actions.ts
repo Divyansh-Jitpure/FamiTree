@@ -59,3 +59,53 @@ export async function createFamilyMemberAction(input: CreateFamilyMemberInput) {
     reason: null,
   };
 }
+
+type CreateRelationshipInput = {
+  treeId: string | null;
+  fromId: string;
+  toId: string;
+  type: string;
+};
+
+export async function createRelationshipAction(input: CreateRelationshipInput) {
+  if (!process.env.DATABASE_URL || !input.treeId) {
+    return {
+      ok: false,
+      reason: "database_unavailable" as const,
+    };
+  }
+
+  const type = input.type.trim();
+
+  if (!input.fromId || !input.toId || !type || input.fromId === input.toId) {
+    return {
+      ok: false,
+      reason: "invalid_input" as const,
+    };
+  }
+
+  const prisma = await getPrismaClient();
+
+  if (!prisma) {
+    return {
+      ok: false,
+      reason: "database_unavailable" as const,
+    };
+  }
+
+  await prisma.relationship.create({
+    data: {
+      familyTreeId: input.treeId,
+      fromId: input.fromId,
+      toId: input.toId,
+      type,
+    },
+  });
+
+  revalidatePath("/[locale]", "page");
+
+  return {
+    ok: true,
+    reason: null,
+  };
+}

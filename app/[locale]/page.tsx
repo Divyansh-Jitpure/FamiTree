@@ -18,6 +18,7 @@ export default async function HomePage({ params }: HomePageProps) {
     <FamilyWorkspace
       home={dictionary.home}
       initialPeople={workspace.people}
+      initialRelationships={workspace.relationships}
       locale={locale}
       treeId={workspace.treeId}
       source={workspace.source}

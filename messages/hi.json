@@ -55,6 +55,13 @@
       "दादा-दादी",
       "रिश्तेदार"
     ],
+    "relationshipOptions": [
+      "के अभिभावक",
+      "के बच्चे",
+      "के जीवनसाथी",
+      "के भाई-बहन",
+      "के रिश्तेदार"
+    ],
     "placeholders": {
       "firstName": "जॉन",
       "lastName": "जितपुरे",
@@ -74,6 +81,41 @@
       "savedToDatabase": "सदस्य family database में save हो गया।",
       "databaseUnavailable": "अभी database save उपलब्ध नहीं है।"
     },
+    "relationshipFormLabel": "रिश्ता जोड़ें",
+    "relationshipFormTitle": "परिवार सदस्यों को जोड़ें",
+    "relationshipFormDescription": "दो परिवार सदस्यों को जोड़ें ताकि ट्री दिखा सके कि वे एक-दूसरे से कैसे जुड़े हैं।",
+    "relationshipFields": {
+      "from": "पहला व्यक्ति",
+      "type": "रिश्ता",
+      "to": "दूसरा व्यक्ति"
+    },
+    "relationshipSubmitAction": "रिश्ता सेव करें",
+    "relationshipSubmitPending": "रिश्ता सेव हो रहा है...",
+    "relationshipMessages": {
+      "invalid": "रिश्ते के लिए दो अलग लोगों को चुनें।",
+      "savedToBrowser": "रिश्ता इस browser के sample workspace में save हो गया।",
+      "savedToDatabase": "रिश्ता family database में save हो गया।"
+    },
+    "relationshipSummaryLabel": "कनेक्शन्स",
+    "relationshipSummaryTitle": "सेव किए गए रिश्ते",
+    "relationshipEmptyState": "अभी तक कोई रिश्ता सेव नहीं हुआ है।",
+    "sampleRelationships": [
+      {
+        "fromName": "जॉन जितपुरे",
+        "toName": "जेन जितपुरे",
+        "type": "के जीवनसाथी"
+      },
+      {
+        "fromName": "जॉन जितपुरे",
+        "toName": "जैक जितपुरे",
+        "type": "के अभिभावक"
+      },
+      {
+        "fromName": "जेन जितपुरे",
+        "toName": "जिल जितपुरे",
+        "type": "के अभिभावक"
+      }
+    ],
     "canvasLabel": "ट्री कैनवास",
     "canvasTitle": "फैमिली स्ट्रक्चर प्रीव्यू",
     "canvasFilters": [

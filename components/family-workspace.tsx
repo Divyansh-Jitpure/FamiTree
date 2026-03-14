@@ -4,14 +4,21 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import type { Dictionary } from "@/lib/i18n/config";
-import { createFamilyMemberAction } from "@/lib/family/actions";
-import type { FamilyMemberView } from "@/lib/family/types";
+import {
+  createFamilyMemberAction,
+  createRelationshipAction,
+} from "@/lib/family/actions";
+import type {
+  FamilyMemberView,
+  FamilyRelationshipView,
+} from "@/lib/family/types";
 
 type HomeCopy = Dictionary["home"];
 
 type FamilyWorkspaceProps = {
   home: HomeCopy;
   initialPeople: FamilyMemberView[];
+  initialRelationships: FamilyRelationshipView[];
   locale: string;
   treeId: string | null;
   source: "database" | "sample";
@@ -25,8 +32,18 @@ type DraftForm = {
   note: string;
 };
 
+type RelationshipForm = {
+  fromId: string;
+  toId: string;
+  type: string;
+};
+
 function getStorageKey(locale: string) {
   return `famitree.members.${locale}`;
+}
+
+function getRelationshipStorageKey(locale: string) {
+  return `famitree.relationships.${locale}`;
 }
 
 function createEmptyForm(home: HomeCopy): DraftForm {
@@ -39,47 +56,79 @@ function createEmptyForm(home: HomeCopy): DraftForm {
   };
 }
 
+function createRelationshipForm(
+  home: HomeCopy,
+  people: FamilyMemberView[]
+): RelationshipForm {
+  return {
+    fromId: people[0]?.id ?? "",
+    toId: people[1]?.id ?? people[0]?.id ?? "",
+    type: home.relationshipOptions[0] ?? "",
+  };
+}
+
 export function FamilyWorkspace({
   home,
   initialPeople,
+  initialRelationships,
   locale,
   treeId,
   source,
 }: FamilyWorkspaceProps) {
   const [people, setPeople] = useState<FamilyMemberView[]>(initialPeople);
   const [form, setForm] = useState<DraftForm>(() => createEmptyForm(home));
+  const [relationships, setRelationships] = useState<FamilyRelationshipView[]>(initialRelationships);
+  const [relationshipForm, setRelationshipForm] = useState<RelationshipForm>(() =>
+    createRelationshipForm(home, initialPeople)
+  );
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [relationshipMessage, setRelationshipMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   useEffect(() => {
     if (source === "database") {
       setPeople(initialPeople);
+      setRelationships(initialRelationships);
+      setRelationshipForm(createRelationshipForm(home, initialPeople));
       setHasLoadedStorage(true);
       return;
     }
 
     const stored = window.localStorage.getItem(getStorageKey(locale));
+    const storedRelationships = window.localStorage.getItem(getRelationshipStorageKey(locale));
 
     if (!stored) {
       setPeople(initialPeople);
-      setHasLoadedStorage(true);
-      return;
+    } else {
+      try {
+        const parsed = JSON.parse(stored) as FamilyMemberView[];
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPeople(parsed);
+        }
+      } catch {
+        window.localStorage.removeItem(getStorageKey(locale));
+      }
     }
 
-    try {
-      const parsed = JSON.parse(stored) as FamilyMemberView[];
+    if (!storedRelationships) {
+      setRelationships(initialRelationships);
+    } else {
+      try {
+        const parsed = JSON.parse(storedRelationships) as FamilyRelationshipView[];
 
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setPeople(parsed);
+        if (Array.isArray(parsed)) {
+          setRelationships(parsed);
+        }
+      } catch {
+        window.localStorage.removeItem(getRelationshipStorageKey(locale));
       }
-    } catch {
-      window.localStorage.removeItem(getStorageKey(locale));
     }
 
     setHasLoadedStorage(true);
-  }, [initialPeople, locale, source]);
+  }, [home, initialPeople, initialRelationships, locale, source]);
 
   useEffect(() => {
     if (!hasLoadedStorage || source === "database") {
@@ -87,7 +136,23 @@ export function FamilyWorkspace({
     }
 
     window.localStorage.setItem(getStorageKey(locale), JSON.stringify(people));
-  }, [hasLoadedStorage, locale, people, source]);
+    window.localStorage.setItem(
+      getRelationshipStorageKey(locale),
+      JSON.stringify(relationships)
+    );
+  }, [hasLoadedStorage, locale, people, relationships, source]);
+
+  useEffect(() => {
+    setRelationshipForm((current) => ({
+      fromId: people.some((person) => person.id === current.fromId)
+        ? current.fromId
+        : people[0]?.id ?? "",
+      toId: people.some((person) => person.id === current.toId)
+        ? current.toId
+        : people[1]?.id ?? people[0]?.id ?? "",
+      type: current.type || home.relationshipOptions[0] || "",
+    }));
+  }, [home.relationshipOptions, people]);
 
   const focusPerson = people[0];
   const stats = [
@@ -111,6 +176,16 @@ export function FamilyWorkspace({
 
   function handleChange(field: keyof DraftForm, value: string) {
     setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function handleRelationshipChange(
+    field: keyof RelationshipForm,
+    value: string
+  ) {
+    setRelationshipForm((current) => ({
       ...current,
       [field]: value,
     }));
@@ -159,13 +234,75 @@ export function FamilyWorkspace({
     setSubmitMessage(home.messages.savedToBrowser);
   }
 
+  function handleRelationshipSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (
+      !relationshipForm.fromId ||
+      !relationshipForm.toId ||
+      relationshipForm.fromId === relationshipForm.toId
+    ) {
+      setRelationshipMessage(home.relationshipMessages.invalid);
+      return;
+    }
+
+    const fromPerson = people.find((person) => person.id === relationshipForm.fromId);
+    const toPerson = people.find((person) => person.id === relationshipForm.toId);
+
+    if (!fromPerson || !toPerson) {
+      setRelationshipMessage(home.relationshipMessages.invalid);
+      return;
+    }
+
+    if (source === "database" && treeId) {
+      startTransition(async () => {
+        const result = await createRelationshipAction({
+          treeId,
+          fromId: relationshipForm.fromId,
+          toId: relationshipForm.toId,
+          type: relationshipForm.type,
+        });
+
+        if (!result.ok) {
+          setRelationshipMessage(
+            result.reason === "invalid_input"
+              ? home.relationshipMessages.invalid
+              : home.messages.databaseUnavailable
+          );
+          return;
+        }
+
+        setRelationshipMessage(home.relationshipMessages.savedToDatabase);
+        router.refresh();
+      });
+
+      return;
+    }
+
+    const nextRelationship: FamilyRelationshipView = {
+      id: `draft-rel-${Date.now()}`,
+      fromId: fromPerson.id,
+      toId: toPerson.id,
+      fromName: fromPerson.name,
+      toName: toPerson.name,
+      type: relationshipForm.type,
+    };
+
+    setRelationships((current) => [nextRelationship, ...current]);
+    setRelationshipMessage(home.relationshipMessages.savedToBrowser);
+  }
+
   function resetWorkspace() {
     setPeople(initialPeople);
+    setRelationships(initialRelationships);
     setForm(createEmptyForm(home));
+    setRelationshipForm(createRelationshipForm(home, initialPeople));
     if (source === "sample") {
       window.localStorage.removeItem(getStorageKey(locale));
+      window.localStorage.removeItem(getRelationshipStorageKey(locale));
     }
     setSubmitMessage(null);
+    setRelationshipMessage(null);
   }
 
   return (
@@ -193,9 +330,9 @@ export function FamilyWorkspace({
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              {stats.map((stat) => (
+              {stats.map((stat, index) => (
                 <article
-                  key={stat.label}
+                  key={`stat-${index}-${stat.label}`}
                   className="rounded-[1.25rem] border border-[var(--line)] bg-white/75 px-4 py-4"
                 >
                   <p className="text-sm text-[var(--muted)]">{stat.label}</p>
@@ -235,9 +372,9 @@ export function FamilyWorkspace({
               </span>
             </div>
             <div className="mt-4 space-y-3">
-              {people.map((person) => (
+              {people.map((person, index) => (
                 <article
-                  key={`${person.name}-${person.meta}`}
+                  key={`person-list-${index}-${person.id}`}
                   className="flex items-center justify-between rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
@@ -260,7 +397,8 @@ export function FamilyWorkspace({
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="glass rounded-[1.75rem] p-5">
+        <aside className="space-y-6">
+          <div className="glass rounded-[1.75rem] p-5">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
             {home.formLabel}
           </p>
@@ -302,8 +440,8 @@ export function FamilyWorkspace({
                 onChange={(event) => handleChange("relation", event.target.value)}
                 className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
               >
-                {home.relationOptions.map((option) => (
-                  <option key={option} value={option}>
+                {home.relationOptions.map((option, index) => (
+                  <option key={`relation-option-${index}-${option}`} value={option}>
                     {option}
                   </option>
                 ))}
@@ -336,6 +474,85 @@ export function FamilyWorkspace({
               {isPending ? home.submitPending : home.submitAction}
             </button>
           </form>
+          </div>
+
+          <div className="glass rounded-[1.75rem] p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+              {home.relationshipFormLabel}
+            </p>
+            <h2 className="mt-2 text-2xl font-bold">{home.relationshipFormTitle}</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              {home.relationshipFormDescription}
+            </p>
+            {relationshipMessage ? (
+              <p className="mt-2 rounded-[1rem] border border-[var(--line)] bg-white/75 px-4 py-3 text-xs leading-6 text-[var(--muted)]">
+                {relationshipMessage}
+              </p>
+            ) : null}
+            <form onSubmit={handleRelationshipSubmit} className="mt-5 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium">
+                  {home.relationshipFields.from}
+                </span>
+                <select
+                  value={relationshipForm.fromId}
+                  onChange={(event) =>
+                    handleRelationshipChange("fromId", event.target.value)
+                  }
+                  className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                >
+                  {people.map((person, index) => (
+                    <option key={`relationship-from-${index}-${person.id}`} value={person.id}>
+                      {person.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium">
+                  {home.relationshipFields.type}
+                </span>
+                <select
+                  value={relationshipForm.type}
+                  onChange={(event) =>
+                    handleRelationshipChange("type", event.target.value)
+                  }
+                  className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                >
+                  {home.relationshipOptions.map((option, index) => (
+                    <option key={`relationship-type-${index}-${option}`} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium">
+                  {home.relationshipFields.to}
+                </span>
+                <select
+                  value={relationshipForm.toId}
+                  onChange={(event) =>
+                    handleRelationshipChange("toId", event.target.value)
+                  }
+                  className="w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                >
+                  {people.map((person, index) => (
+                    <option key={`relationship-to-${index}-${person.id}`} value={person.id}>
+                      {person.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={isPending || people.length < 2}
+                className="w-full rounded-[1rem] bg-[var(--forest)] px-5 py-3 text-sm font-semibold text-white"
+              >
+                {isPending ? home.relationshipSubmitPending : home.relationshipSubmitAction}
+              </button>
+            </form>
+          </div>
         </aside>
 
         <section className="glass rounded-[1.75rem] p-5 md:p-6">
@@ -349,7 +566,7 @@ export function FamilyWorkspace({
             <div className="flex flex-wrap gap-2">
               {home.canvasFilters.map((filter, index) => (
                 <button
-                  key={filter}
+                  key={`canvas-filter-${index}-${filter}`}
                   type="button"
                   className={`rounded-full px-4 py-2 text-sm font-semibold ${
                     index === 0
@@ -365,8 +582,8 @@ export function FamilyWorkspace({
           <div className="mt-6 rounded-[1.75rem] border border-[var(--line)] bg-[linear-gradient(180deg,#fffefb_0%,#f7f1e7_100%)] p-5">
             <div className="flex min-h-[420px] flex-col justify-between">
               <div className="grid gap-8 lg:grid-cols-3">
-                {people.slice(1, 3).map((person) => (
-                  <div key={person.name} className="flex flex-col items-center gap-4">
+                {people.slice(1, 3).map((person, index) => (
+                  <div key={`canvas-top-${index}-${person.id}`} className="flex flex-col items-center gap-4">
                     <div className="h-16 w-px bg-[var(--line)]" />
                     <div className="rounded-[1.25rem] border border-[var(--line)] bg-white px-5 py-4 text-center shadow-sm">
                       <p className="font-semibold">{person.name}</p>
@@ -379,9 +596,9 @@ export function FamilyWorkspace({
                     <p className="text-lg font-bold">{focusPerson.name}</p>
                     <p className="mt-1 text-sm text-[var(--muted)]">{focusPerson.meta}</p>
                     <div className="mt-3 flex justify-center gap-2">
-                      {focusPerson.tags.map((tag) => (
+                      {focusPerson.tags.map((tag, index) => (
                         <span
-                          key={tag}
+                          key={`${focusPerson.id}-tag-${index}`}
                           className="rounded-full bg-[#fff2e9] px-3 py-1 text-xs font-semibold text-[var(--accent)]"
                         >
                           {tag}
@@ -393,8 +610,8 @@ export function FamilyWorkspace({
                 </div>
               </div>
               <div className="mt-8 grid gap-5 md:grid-cols-3">
-                {people.slice(3, 6).map((person) => (
-                  <div key={person.name} className="flex flex-col items-center gap-3">
+                {people.slice(3, 6).map((person, index) => (
+                  <div key={`canvas-bottom-${index}-${person.id}`} className="flex flex-col items-center gap-3">
                     <div className="h-10 w-px bg-[var(--line)]" />
                     <div className="w-full rounded-[1.25rem] border border-[var(--line)] bg-white px-4 py-4 text-center shadow-sm">
                       <p className="font-semibold">{person.name}</p>
@@ -403,6 +620,40 @@ export function FamilyWorkspace({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+          <div className="mt-6 rounded-[1.5rem] border border-[var(--line)] bg-white/70 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+                  {home.relationshipSummaryLabel}
+                </p>
+                <h3 className="mt-2 text-xl font-bold">
+                  {home.relationshipSummaryTitle}
+                </h3>
+              </div>
+              <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-sm font-semibold text-[var(--accent)]">
+                {relationships.length}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {relationships.length > 0 ? (
+                relationships.map((relationship, index) => (
+                  <article
+                    key={`relationship-${index}-${relationship.id}`}
+                    className="rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3"
+                  >
+                    <p className="font-semibold">{relationship.type}</p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      {relationship.fromName} {"->"} {relationship.toName}
+                    </p>
+                  </article>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--muted)]">
+                  {home.relationshipEmptyState}
+                </p>
+              )}
             </div>
           </div>
         </section>

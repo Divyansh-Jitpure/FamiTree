@@ -8,12 +8,13 @@ datasource db {
 }
 
 model FamilyTree {
-  id          String         @id @default(cuid())
-  title       String
-  description String?
-  people      Person[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  people        Person[]
+  relationships Relationship[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Person {
@@ -40,15 +41,18 @@ model Person {
 }
 
 model Relationship {
-  id         String   @id @default(cuid())
-  fromId     String
-  toId       String
-  type       String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  from       Person   @relation("relationshipFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  to         Person   @relation("relationshipTo", fields: [toId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  familyTreeId String
+  fromId       String
+  toId         String
+  type         String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  familyTree   FamilyTree @relation(fields: [familyTreeId], references: [id], onDelete: Cascade)
+  from         Person     @relation("relationshipFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to           Person     @relation("relationshipTo", fields: [toId], references: [id], onDelete: Cascade)
 
+  @@index([familyTreeId, type])
   @@index([fromId, type])
   @@index([toId, type])
 }

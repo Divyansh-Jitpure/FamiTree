@@ -55,6 +55,13 @@
       "Grandparent",
       "Relative"
     ],
+    "relationshipOptions": [
+      "Parent of",
+      "Child of",
+      "Spouse of",
+      "Sibling of",
+      "Relative of"
+    ],
     "placeholders": {
       "firstName": "John",
       "lastName": "Jitpure",
@@ -74,6 +81,41 @@
       "savedToDatabase": "Member saved to the family database.",
       "databaseUnavailable": "Database save is not available right now."
     },
+    "relationshipFormLabel": "Add connection",
+    "relationshipFormTitle": "Link family members",
+    "relationshipFormDescription": "Connect two family members so the tree can show how they relate to each other.",
+    "relationshipFields": {
+      "from": "From person",
+      "type": "Relationship",
+      "to": "To person"
+    },
+    "relationshipSubmitAction": "Save connection",
+    "relationshipSubmitPending": "Saving connection...",
+    "relationshipMessages": {
+      "invalid": "Choose two different people for the relationship.",
+      "savedToBrowser": "Relationship saved in this browser sample workspace.",
+      "savedToDatabase": "Relationship saved to the family database."
+    },
+    "relationshipSummaryLabel": "Connections",
+    "relationshipSummaryTitle": "Saved relationships",
+    "relationshipEmptyState": "No relationships saved yet.",
+    "sampleRelationships": [
+      {
+        "fromName": "John Jitpure",
+        "toName": "Jane Jitpure",
+        "type": "Spouse of"
+      },
+      {
+        "fromName": "John Jitpure",
+        "toName": "Jack Jitpure",
+        "type": "Parent of"
+      },
+      {
+        "fromName": "Jane Jitpure",
+        "toName": "Jill Jitpure",
+        "type": "Parent of"
+      }
+    ],
     "canvasLabel": "Tree canvas",
     "canvasTitle": "Family structure preview",
     "canvasFilters": [
