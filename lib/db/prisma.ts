@@ -1,15 +1,24 @@
-import { PrismaClient } from "@prisma/client";
+type PrismaClientType = import("@prisma/client").PrismaClient;
 
 declare global {
-  var prisma: PrismaClient | undefined;
+  var prisma: PrismaClientType | undefined;
 }
 
-export const prisma =
-  globalThis.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+export async function getPrismaClient() {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.prisma = prisma;
+  if (globalThis.prisma) {
+    return globalThis.prisma;
+  }
+
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient();
+
+  if (process.env.NODE_ENV !== "production") {
+    globalThis.prisma = prisma;
+  }
+
+  return prisma;
 }

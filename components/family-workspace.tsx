@@ -3,13 +3,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import type { Dictionary } from "@/lib/i18n/config";
+import type { FamilyMemberView } from "@/lib/family/types";
 
 type HomeCopy = Dictionary["home"];
-type HomePerson = HomeCopy["people"][number];
 
 type FamilyWorkspaceProps = {
   home: HomeCopy;
+  initialPeople: FamilyMemberView[];
   locale: string;
+  treeId: string | null;
+  source: "database" | "sample";
 };
 
 type DraftForm = {
@@ -34,21 +37,34 @@ function createEmptyForm(home: HomeCopy): DraftForm {
   };
 }
 
-export function FamilyWorkspace({ home, locale }: FamilyWorkspaceProps) {
-  const [people, setPeople] = useState<HomePerson[]>(home.people);
+export function FamilyWorkspace({
+  home,
+  initialPeople,
+  locale,
+  treeId,
+  source,
+}: FamilyWorkspaceProps) {
+  const [people, setPeople] = useState<FamilyMemberView[]>(initialPeople);
   const [form, setForm] = useState<DraftForm>(() => createEmptyForm(home));
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
   useEffect(() => {
+    if (source === "database") {
+      setPeople(initialPeople);
+      setHasLoadedStorage(true);
+      return;
+    }
+
     const stored = window.localStorage.getItem(getStorageKey(locale));
 
     if (!stored) {
+      setPeople(initialPeople);
       setHasLoadedStorage(true);
       return;
     }
 
     try {
-      const parsed = JSON.parse(stored) as HomePerson[];
+      const parsed = JSON.parse(stored) as FamilyMemberView[];
 
       if (Array.isArray(parsed) && parsed.length > 0) {
         setPeople(parsed);
@@ -58,15 +74,15 @@ export function FamilyWorkspace({ home, locale }: FamilyWorkspaceProps) {
     }
 
     setHasLoadedStorage(true);
-  }, [locale]);
+  }, [initialPeople, locale, source]);
 
   useEffect(() => {
-    if (!hasLoadedStorage) {
+    if (!hasLoadedStorage || source === "database") {
       return;
     }
 
     window.localStorage.setItem(getStorageKey(locale), JSON.stringify(people));
-  }, [hasLoadedStorage, locale, people]);
+  }, [hasLoadedStorage, locale, people, source]);
 
   const focusPerson = people[0];
   const stats = [
@@ -103,7 +119,8 @@ export function FamilyWorkspace({ home, locale }: FamilyWorkspaceProps) {
     }
 
     const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
-    const nextPerson: HomePerson = {
+    const nextPerson: FamilyMemberView = {
+      id: `draft-${Date.now()}`,
       name: fullName,
       role: form.relation.trim(),
       meta: form.city.trim() || home.defaultMeta,
@@ -115,9 +132,11 @@ export function FamilyWorkspace({ home, locale }: FamilyWorkspaceProps) {
   }
 
   function resetWorkspace() {
-    setPeople(home.people);
+    setPeople(initialPeople);
     setForm(createEmptyForm(home));
-    window.localStorage.removeItem(getStorageKey(locale));
+    if (source === "sample") {
+      window.localStorage.removeItem(getStorageKey(locale));
+    }
   }
 
   return (
@@ -131,6 +150,9 @@ export function FamilyWorkspace({ home, locale }: FamilyWorkspaceProps) {
               </span>
               <span className="inline-flex rounded-full border border-[var(--line)] bg-white/65 px-4 py-2 text-sm font-medium text-[var(--muted)]">
                 {home.workspaceStatus}
+              </span>
+              <span className="inline-flex rounded-full border border-[var(--line)] bg-white/65 px-4 py-2 text-sm font-medium text-[var(--muted)]">
+                {source === "database" ? home.databaseModeNotice : home.sampleModeNotice}
               </span>
             </div>
             <div className="space-y-3">
@@ -215,6 +237,11 @@ export function FamilyWorkspace({ home, locale }: FamilyWorkspaceProps) {
           </p>
           <h2 className="mt-2 text-2xl font-bold">{home.formTitle}</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{home.formDescription}</p>
+          {source === "database" && !treeId ? null : (
+            <p className="mt-2 rounded-[1rem] border border-[var(--line)] bg-white/75 px-4 py-3 text-xs leading-6 text-[var(--muted)]">
+              {source === "database" ? home.databaseHelperText : home.sampleHelperText}
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{home.fields.firstName}</span>

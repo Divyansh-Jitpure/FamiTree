@@ -32,10 +32,14 @@
       "Import details"
     ],
     "resetAction": "Reset sample data",
+    "sampleModeNotice": "Sample mode",
+    "databaseModeNotice": "Database mode",
     "familyPanelLabel": "Family members",
     "formLabel": "Quick add",
     "formTitle": "Add a family member",
     "formDescription": "Start entering your family data here. New entries are saved in this browser for now until the database is connected.",
+    "sampleHelperText": "You are currently working from browser-saved sample data. This keeps development moving until PostgreSQL is connected.",
+    "databaseHelperText": "Database-backed family data is available. The next step is wiring this form into a server action so new members save directly to PostgreSQL.",
     "fields": {
       "firstName": "First name",
       "lastName": "Last name",

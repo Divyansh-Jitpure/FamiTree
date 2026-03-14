@@ -32,10 +32,14 @@
       "जानकारी इम्पोर्ट करें"
     ],
     "resetAction": "सैंपल डेटा रीसेट करें",
+    "sampleModeNotice": "सैंपल मोड",
+    "databaseModeNotice": "डेटाबेस मोड",
     "familyPanelLabel": "परिवार सदस्य",
     "formLabel": "जल्दी जोड़ें",
     "formTitle": "परिवार सदस्य जोड़ें",
     "formDescription": "यहीं से परिवार की जानकारी भरना शुरू करें। अभी के लिए नई entries इसी browser में save होंगी, बाद में database connect होगा।",
+    "sampleHelperText": "अभी आप browser में save होने वाले sample data पर काम कर रहे हैं। PostgreSQL connect होने तक यही development को आगे बढ़ाएगा।",
+    "databaseHelperText": "डेटाबेस से आने वाला family data उपलब्ध है। अगला कदम इस form को server action से जोड़ना है ताकि नए सदस्य सीधे PostgreSQL में save हों।",
     "fields": {
       "firstName": "पहला नाम",
       "lastName": "उपनाम",
