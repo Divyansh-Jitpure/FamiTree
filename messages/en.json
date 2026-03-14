@@ -31,23 +31,30 @@
       "Create branch",
       "Import details"
     ],
+    "resetAction": "Reset sample data",
     "familyPanelLabel": "Family members",
-    "detailsLabel": "Person details",
-    "infoLabel": "Saved information",
-    "infoRows": [
-      {
-        "label": "Address",
-        "value": "South Delhi, India"
-      },
-      {
-        "label": "Phone",
-        "value": "+91 98XXXXXX10"
-      },
-      {
-        "label": "Notes",
-        "value": "Keeps birth records and family stories."
-      }
-    ],
+    "formLabel": "Quick add",
+    "formTitle": "Add a family member",
+    "formDescription": "Start entering your family data here. New entries are saved in this browser for now until the database is connected.",
+    "fields": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "relation": "Relation",
+      "city": "City",
+      "note": "Note"
+    },
+    "placeholders": {
+      "firstName": "John",
+      "lastName": "Jitpure",
+      "relation": "Parent",
+      "city": "Nagpur",
+      "note": "Add a short note"
+    },
+    "submitAction": "Save member",
+    "defaultMeta": "Location not added yet",
+    "defaultTag": "Photo",
+    "noteTag": "Notes",
+    "addressTag": "Address",
     "canvasLabel": "Tree canvas",
     "canvasTitle": "Family structure preview",
     "canvasFilters": [

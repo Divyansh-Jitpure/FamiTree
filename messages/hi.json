@@ -31,23 +31,30 @@
       "नई शाखा बनाएं",
       "जानकारी इम्पोर्ट करें"
     ],
+    "resetAction": "सैंपल डेटा रीसेट करें",
     "familyPanelLabel": "परिवार सदस्य",
-    "detailsLabel": "व्यक्ति की जानकारी",
-    "infoLabel": "सेव की गई डिटेल्स",
-    "infoRows": [
-      {
-        "label": "पता",
-        "value": "साउथ दिल्ली, भारत"
-      },
-      {
-        "label": "फोन",
-        "value": "+91 98XXXXXX10"
-      },
-      {
-        "label": "नोट्स",
-        "value": "जन्म रिकॉर्ड और परिवार की कहानियां संभालते हैं।"
-      }
-    ],
+    "formLabel": "जल्दी जोड़ें",
+    "formTitle": "परिवार सदस्य जोड़ें",
+    "formDescription": "यहीं से परिवार की जानकारी भरना शुरू करें। अभी के लिए नई entries इसी browser में save होंगी, बाद में database connect होगा।",
+    "fields": {
+      "firstName": "पहला नाम",
+      "lastName": "उपनाम",
+      "relation": "रिश्ता",
+      "city": "शहर",
+      "note": "नोट"
+    },
+    "placeholders": {
+      "firstName": "जॉन",
+      "lastName": "जितपुरे",
+      "relation": "अभिभावक",
+      "city": "नागपुर",
+      "note": "छोटा नोट लिखें"
+    },
+    "submitAction": "सदस्य सेव करें",
+    "defaultMeta": "लोकेशन अभी जोड़ी नहीं गई",
+    "defaultTag": "फोटो",
+    "noteTag": "नोट्स",
+    "addressTag": "पता",
     "canvasLabel": "ट्री कैनवास",
     "canvasTitle": "फैमिली स्ट्रक्चर प्रीव्यू",
     "canvasFilters": [
