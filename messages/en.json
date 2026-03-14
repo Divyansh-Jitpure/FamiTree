@@ -1,0 +1,97 @@
+{
+  "site": {
+    "name": "FamiTree",
+    "tagline": "Build a family story, not just a chart.",
+    "description": "A multilingual family tree app for preserving people, memories, and relationships."
+  },
+  "nav": {
+    "home": "Home"
+  },
+  "home": {
+    "badge": "Family tree builder",
+    "workspaceStatus": "Core workspace",
+    "title": "Shape your family tree as a living map of people, homes, and relationships.",
+    "description": "Create branches, manage family members, and keep photos, addresses, and notes in one place with a layout that works well on both phone and desktop.",
+    "stats": [
+      {
+        "label": "Family members",
+        "value": "6"
+      },
+      {
+        "label": "Connected branches",
+        "value": "3"
+      },
+      {
+        "label": "Saved photos",
+        "value": "12"
+      }
+    ],
+    "actions": [
+      "Add family member",
+      "Create branch",
+      "Import details"
+    ],
+    "familyPanelLabel": "Family members",
+    "detailsLabel": "Person details",
+    "infoLabel": "Saved information",
+    "infoRows": [
+      {
+        "label": "Address",
+        "value": "South Delhi, India"
+      },
+      {
+        "label": "Phone",
+        "value": "+91 98XXXXXX10"
+      },
+      {
+        "label": "Notes",
+        "value": "Keeps birth records and family stories."
+      }
+    ],
+    "canvasLabel": "Tree canvas",
+    "canvasTitle": "Family structure preview",
+    "canvasFilters": [
+      "All relations",
+      "Parents",
+      "Children"
+    ],
+    "people": [
+      {
+        "name": "John Jitpure",
+        "role": "Parent",
+        "meta": "Delhi",
+        "tags": ["Photo", "Address", "Notes"]
+      },
+      {
+        "name": "Jane Jitpure",
+        "role": "Spouse",
+        "meta": "Delhi",
+        "tags": ["Photo", "Events"]
+      },
+      {
+        "name": "Grandma Jitpure",
+        "role": "Grandparent",
+        "meta": "Jaipur",
+        "tags": ["Stories", "Photo"]
+      },
+      {
+        "name": "Jack Jitpure",
+        "role": "Child",
+        "meta": "School details added",
+        "tags": ["Photo"]
+      },
+      {
+        "name": "Jill Jitpure",
+        "role": "Child",
+        "meta": "Birthday saved",
+        "tags": ["Notes"]
+      },
+      {
+        "name": "James Jitpure",
+        "role": "Sibling branch",
+        "meta": "Mumbai",
+        "tags": ["Address"]
+      }
+    ]
+  }
+}
