@@ -13,6 +13,8 @@ import {
   ReactFlowProvider,
   type NodeTypes,
   type Connection,
+  type Node,
+  type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -252,23 +254,120 @@ function TreeBoardInner({
     onAddPerson?.(newPerson, relObj);
   };
 
+  const [activeEdgeData, setActiveEdgeData] = useState<{
+    isOpen: boolean;
+    edgeId: string;
+    fromName: string;
+    toName: string;
+    type: string;
+  }>({ isOpen: false, edgeId: "", fromName: "", toName: "", type: "" });
+
+  const handleNodeDrag = useCallback(
+    (_event: MouseEvent | TouchEvent, _draggedNode: Node, currentNodes: Node[]) => {
+      const typedNodes = currentNodes;
+      const parentToChildren = new Map<string, string[]>();
+      relationships.forEach((rel) => {
+        if (rel.type.toLowerCase().includes("parent")) {
+          const children = parentToChildren.get(rel.fromId) || [];
+          if (!children.includes(rel.toId)) children.push(rel.toId);
+          parentToChildren.set(rel.fromId, children);
+        }
+      });
+
+      const nodeMap = new Map(typedNodes.map((n) => [n.id, n]));
+      const nonSiblingEdges = edges.filter((e) => !e.id.startsWith("inferred-sibling-"));
+      const newSiblingEdges: Edge[] = [];
+
+      parentToChildren.forEach((children) => {
+        if (children.length > 1) {
+          children.sort((aId, bId) => {
+            const xA = nodeMap.get(aId)?.position.x ?? 0;
+            const xB = nodeMap.get(bId)?.position.x ?? 0;
+            return xA - xB;
+          });
+
+          for (let i = 0; i < children.length - 1; i++) {
+            const c1 = children[i];
+            const c2 = children[i + 1];
+            newSiblingEdges.push({
+              id: `inferred-sibling-${c1}-${c2}`,
+              source: c1,
+              target: c2,
+              sourceHandle: "right",
+              targetHandle: "left",
+              label: "Sibling of",
+              type: "smoothstep",
+              style: {
+                stroke: "#8b5cf6",
+                strokeWidth: 2,
+                strokeDasharray: "4,4",
+              },
+              labelStyle: { fill: "#475569", fontWeight: 600, fontSize: 11 },
+              labelBgStyle: { fill: "#ffffff", fillOpacity: 0.9, rx: 6, ry: 6 },
+              labelBgPadding: [6, 4],
+            });
+          }
+        }
+      });
+
+      // Also ensure all non-inferred sibling edges strictly point from left node to right node
+      const normalizedNonSiblingEdges = nonSiblingEdges.map((edge) => {
+        const isSiblingEdge = edge.label === "Sibling of";
+        if (isSiblingEdge) {
+          const xSource = nodeMap.get(edge.source)?.position.x ?? 0;
+          const xTarget = nodeMap.get(edge.target)?.position.x ?? 0;
+          if (xSource > xTarget) {
+            return {
+              ...edge,
+              source: edge.target,
+              target: edge.source,
+              sourceHandle: "right",
+              targetHandle: "left",
+            };
+          }
+        }
+        return edge;
+      });
+
+      setEdges([...normalizedNonSiblingEdges, ...newSiblingEdges]);
+    },
+    [relationships, edges, setEdges]
+  );
+
   const handleEdgeClick = useCallback(
-    (event: React.MouseEvent, edge: { id: string; label?: string | React.ReactNode }) => {
+    (event: React.MouseEvent, edge: { id: string }) => {
       event.stopPropagation();
       const rel = relationships.find((r) => r.id === edge.id);
       const fromP = people.find((p) => p.id === rel?.fromId);
       const toP = people.find((p) => p.id === rel?.toId);
-      const labelText = typeof edge.label === "string" ? edge.label : rel?.type || "relationship";
 
-      if (
-        confirm(
-          `Do you want to delete the '${labelText}' connection between ${fromP?.name || "Member"} and ${toP?.name || "Member"}?`
-        )
-      ) {
-        onDeleteRelationship?.(edge.id);
+      if (rel && fromP && toP) {
+        setActiveEdgeData({
+          isOpen: true,
+          edgeId: rel.id,
+          fromName: fromP.name,
+          toName: toP.name,
+          type: rel.type,
+        });
       }
     },
-    [relationships, people, onDeleteRelationship]
+    [relationships, people]
+  );
+
+  const handleNodeDragStop = useCallback(
+    (_event: MouseEvent | TouchEvent, draggedNode: Node) => {
+      const targetPerson = people.find((p) => p.id === draggedNode.id);
+      if (targetPerson) {
+        onUpdatePerson?.({
+          ...targetPerson,
+          position: {
+            x: draggedNode.position.x,
+            y: draggedNode.position.y,
+          },
+        });
+      }
+    },
+    [people, onUpdatePerson]
   );
 
   if (people.length === 0) {
@@ -373,6 +472,8 @@ function TreeBoardInner({
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
         onEdgeClick={handleEdgeClick}
+        onNodeDrag={handleNodeDrag}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -476,6 +577,64 @@ function TreeBoardInner({
         onDeleteRelationship={onDeleteRelationship}
         home={home}
       />
+
+      {/* Modern Connection Inspector Modal */}
+      {activeEdgeData.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-[1.75rem] border border-[var(--line)] bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-[var(--text)]">
+                  Connection Details
+                </h3>
+                <p className="text-xs text-[var(--muted)]">
+                  Relationship between family members
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveEdgeData((prev) => ({ ...prev, isOpen: false }))}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600 hover:bg-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-strong)] p-4 text-center">
+                <span className="rounded-full bg-[#edf4ee] px-3 py-1 text-xs font-semibold text-[var(--forest)]">
+                  {activeEdgeData.type}
+                </span>
+                <div className="mt-3 flex items-center justify-center gap-2 text-sm font-bold">
+                  <span className="text-[var(--accent)]">{activeEdgeData.fromName}</span>
+                  <span className="text-gray-400">➔</span>
+                  <span className="text-[var(--forest)]">{activeEdgeData.toName}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveEdgeData((prev) => ({ ...prev, isOpen: false }))}
+                  className="w-1/2 rounded-[1rem] border border-[var(--line)] py-2.5 text-xs font-semibold text-[var(--text)] hover:bg-gray-50"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteRelationship?.(activeEdgeData.edgeId);
+                    setActiveEdgeData((prev) => ({ ...prev, isOpen: false }));
+                  }}
+                  className="w-1/2 rounded-[1rem] bg-rose-600 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-rose-700"
+                >
+                  Delete Line
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

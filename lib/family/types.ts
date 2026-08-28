@@ -4,6 +4,7 @@ export type FamilyMemberView = {
   role: string;
   meta: string;
   tags: string[];
+  position?: { x: number; y: number };
 };
 
 export type FamilyRelationshipView = {

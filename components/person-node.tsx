@@ -96,7 +96,13 @@ export const PersonNode = memo(function PersonNode({
         </span>
       </div>
 
-      {/* Bottom Handle (Child Connection & Add Child Button) */}
+      {/* Bottom Handles (Child Connection, Sibling Target & Add Child Button) */}
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-target"
+        className="!h-3 !w-3 !border-2 !border-white !bg-[var(--forest)] hover:!scale-125 transition-transform"
+      />
       <Handle
         type="source"
         position={Position.Bottom}
