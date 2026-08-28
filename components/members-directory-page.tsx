@@ -27,10 +27,10 @@ export function MembersDirectoryPage({
 
   useEffect(() => {
     const stored = window.localStorage.getItem(getStorageKey());
-    if (stored) {
+    if (stored !== null) {
       try {
         const parsed = JSON.parse(stored) as FamilyMemberView[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sampleMap = new Map(initialPeople.map((p) => [p.id, p]));
           const mergedPeople = parsed.map((person) => {
             if (person.id.startsWith("sample-")) {

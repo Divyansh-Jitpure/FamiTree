@@ -45,10 +45,10 @@ export function FamilyWorkspace({
     const stored = window.localStorage.getItem(getStorageKey());
     const storedRel = window.localStorage.getItem(getRelationshipStorageKey());
 
-    if (stored) {
+    if (stored !== null) {
       try {
         const parsed = JSON.parse(stored) as FamilyMemberView[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sampleMap = new Map(initialPeople.map((p) => [p.id, p]));
           const mergedPeople = parsed.map((person) => {
             if (person.id.startsWith("sample-")) {
@@ -70,7 +70,7 @@ export function FamilyWorkspace({
         /* fallback */
       }
     }
-    if (storedRel) {
+    if (storedRel !== null) {
       try {
         const parsedRel = JSON.parse(storedRel);
         if (Array.isArray(parsedRel)) setRelationships(parsedRel);
