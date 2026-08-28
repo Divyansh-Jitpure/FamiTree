@@ -12,12 +12,15 @@
   },
   "dependencies": {
     "@prisma/client": "latest",
+    "@xyflow/react": "^12.11.5",
+    "dagre": "^0.8.5",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
+    "@types/dagre": "^0.7.54",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

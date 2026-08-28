@@ -5,7 +5,9 @@
     "description": "A multilingual family tree app for preserving people, memories, and relationships."
   },
   "nav": {
-    "home": "Home"
+    "home": "Home",
+    "tree": "Tree Canvas",
+    "members": "Members Directory"
   },
   "home": {
     "badge": "Family tree builder",
@@ -123,6 +125,24 @@
       "Parents",
       "Children"
     ],
+    "boardLabels": {
+      "fitView": "Fit view",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "emptyMessage": "No family members to display yet.",
+      "searchPlaceholder": "Search family member...",
+      "addMember": "Add member",
+      "connectModalTitle": "Define Relationship",
+      "connectModalDesc": "Select how relatives are connected.",
+      "inspectorTitle": "Member Details",
+      "addChild": "+ Child",
+      "addSpouse": "+ Spouse",
+      "addParent": "+ Parent",
+      "editMember": "Edit Member",
+      "deleteMember": "Delete Member",
+      "cancel": "Cancel",
+      "save": "Save Changes"
+    },
     "people": [
       {
         "name": "John Jitpure",
