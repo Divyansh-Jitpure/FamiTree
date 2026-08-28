@@ -184,6 +184,15 @@ export function FamilyTreeCanvasPage({
     setRelationships((prev) => prev.filter((r) => r.fromId !== personId && r.toId !== personId));
   };
 
+  const handleResetSampleData = () => {
+    if (source === "sample") {
+      window.localStorage.removeItem(getStorageKey());
+      window.localStorage.removeItem(getRelationshipStorageKey());
+    }
+    setPeople(initialPeople);
+    setRelationships(initialRelationships);
+  };
+
   return (
     <main className="space-y-4 pb-6">
       <div className="flex flex-wrap items-center justify-between gap-3 px-2">
@@ -216,6 +225,7 @@ export function FamilyTreeCanvasPage({
         onAddRelationship={handleAddRelationship}
         onUpdatePerson={handleUpdatePerson}
         onDeletePerson={handleDeletePerson}
+        onResetSampleData={handleResetSampleData}
       />
     </main>
   );

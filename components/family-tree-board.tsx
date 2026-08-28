@@ -46,6 +46,7 @@ type FamilyTreeBoardProps = {
   onAddRelationship?: (fromId: string, toId: string, type: string) => void;
   onUpdatePerson?: (updatedPerson: FamilyMemberView) => void;
   onDeletePerson?: (personId: string) => void;
+  onResetSampleData?: () => void;
 };
 
 const nodeTypes: NodeTypes = {
@@ -63,6 +64,7 @@ function TreeBoardInner({
   onAddRelationship,
   onUpdatePerson,
   onDeletePerson,
+  onResetSampleData,
 }: FamilyTreeBoardProps) {
   const { setCenter } = useReactFlow();
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(() => new Set());
@@ -250,8 +252,47 @@ function TreeBoardInner({
 
   if (people.length === 0) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center rounded-[1.75rem] border border-[var(--line)] bg-white/70 p-6 text-center text-sm text-[var(--muted)]">
-        {labels.emptyMessage}
+      <div className="flex min-h-[480px] w-full flex-col items-center justify-center rounded-[2rem] border border-dashed border-[var(--line)] bg-white/80 p-8 text-center backdrop-blur shadow-sm">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl font-bold text-[var(--accent)]">
+          🌱
+        </div>
+        <h3 className="mt-4 text-2xl font-bold text-[var(--text)]">
+          {labels.emptyMessage || "Your Family Tree is Empty"}
+        </h3>
+        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">
+          Start building your family tree by adding the first family member or restore the sample tree.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setAddModalTarget({ id: null, name: null, type: null });
+              setIsAddModalOpen(true);
+            }}
+            className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
+          >
+            + Add First Member
+          </button>
+          {onResetSampleData && (
+            <button
+              type="button"
+              onClick={onResetSampleData}
+              className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold text-[var(--text)] transition hover:bg-gray-50 active:scale-95"
+            >
+              Restore Sample Tree
+            </button>
+          )}
+        </div>
+
+        <AddMemberModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSave={handleSaveNewMember}
+          home={home}
+          targetPersonName={addModalTarget.name}
+          defaultRelationType={addModalTarget.type}
+          targetPersonId={addModalTarget.id}
+        />
       </div>
     );
   }

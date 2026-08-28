@@ -139,8 +139,25 @@ export function MembersDirectoryPage({
         </div>
 
         {filteredPeople.length === 0 && (
-          <div className="py-12 text-center text-sm text-[var(--muted)]">
-            No family members match your search query.
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm font-semibold text-[var(--muted)]">
+              {people.length === 0
+                ? "Your family directory is empty."
+                : "No family members match your search query."}
+            </p>
+            {people.length === 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.localStorage.removeItem(getStorageKey());
+                  window.localStorage.removeItem("famitree.relationships.shared");
+                  setPeople(initialPeople);
+                }}
+                className="mt-4 rounded-full border border-[var(--line)] bg-white px-5 py-2.5 text-xs font-bold text-[var(--text)] shadow-sm hover:bg-gray-50"
+              >
+                Restore Sample Tree
+              </button>
+            )}
           </div>
         )}
       </div>
