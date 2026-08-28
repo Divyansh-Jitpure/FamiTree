@@ -46,6 +46,7 @@ type FamilyTreeBoardProps = {
   onAddRelationship?: (fromId: string, toId: string, type: string) => void;
   onUpdatePerson?: (updatedPerson: FamilyMemberView) => void;
   onDeletePerson?: (personId: string) => void;
+  onDeleteRelationship?: (relationshipId: string) => void;
   onResetSampleData?: () => void;
 };
 
@@ -64,6 +65,7 @@ function TreeBoardInner({
   onAddRelationship,
   onUpdatePerson,
   onDeletePerson,
+  onDeleteRelationship,
   onResetSampleData,
 }: FamilyTreeBoardProps) {
   const { setCenter } = useReactFlow();
@@ -250,6 +252,25 @@ function TreeBoardInner({
     onAddPerson?.(newPerson, relObj);
   };
 
+  const handleEdgeClick = useCallback(
+    (event: React.MouseEvent, edge: { id: string; label?: string | React.ReactNode }) => {
+      event.stopPropagation();
+      const rel = relationships.find((r) => r.id === edge.id);
+      const fromP = people.find((p) => p.id === rel?.fromId);
+      const toP = people.find((p) => p.id === rel?.toId);
+      const labelText = typeof edge.label === "string" ? edge.label : rel?.type || "relationship";
+
+      if (
+        confirm(
+          `Do you want to delete the '${labelText}' connection between ${fromP?.name || "Member"} and ${toP?.name || "Member"}?`
+        )
+      ) {
+        onDeleteRelationship?.(edge.id);
+      }
+    },
+    [relationships, people, onDeleteRelationship]
+  );
+
   if (people.length === 0) {
     return (
       <div className="flex min-h-[480px] w-full flex-col items-center justify-center rounded-[2rem] border border-dashed border-[var(--line)] bg-white/80 p-8 text-center backdrop-blur shadow-sm">
@@ -351,6 +372,7 @@ function TreeBoardInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
+        onEdgeClick={handleEdgeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -449,6 +471,9 @@ function TreeBoardInner({
         }
         onUpdate={(updatedPerson) => onUpdatePerson?.(updatedPerson)}
         onDelete={(personId) => onDeletePerson?.(personId)}
+        relationships={relationships}
+        people={people}
+        onDeleteRelationship={onDeleteRelationship}
         home={home}
       />
     </div>

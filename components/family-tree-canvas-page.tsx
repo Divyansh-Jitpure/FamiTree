@@ -184,6 +184,10 @@ export function FamilyTreeCanvasPage({
     setRelationships((prev) => prev.filter((r) => r.fromId !== personId && r.toId !== personId));
   };
 
+  const handleDeleteRelationship = (relationshipId: string) => {
+    setRelationships((prev) => prev.filter((r) => r.id !== relationshipId));
+  };
+
   const handleResetSampleData = () => {
     if (source === "sample") {
       window.localStorage.removeItem(getStorageKey());
@@ -225,6 +229,7 @@ export function FamilyTreeCanvasPage({
         onAddRelationship={handleAddRelationship}
         onUpdatePerson={handleUpdatePerson}
         onDeletePerson={handleDeletePerson}
+        onDeleteRelationship={handleDeleteRelationship}
         onResetSampleData={handleResetSampleData}
       />
     </main>

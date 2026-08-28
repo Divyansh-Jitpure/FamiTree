@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/i18n/config";
-import type { FamilyMemberView } from "@/lib/family/types";
+import type { FamilyMemberView, FamilyRelationshipView } from "@/lib/family/types";
 
 type HomeCopy = Dictionary["home"];
 
@@ -12,6 +12,9 @@ type MemberInspectorModalProps = {
   onClose: () => void;
   onUpdate: (updatedPerson: FamilyMemberView) => void;
   onDelete: (personId: string) => void;
+  relationships?: FamilyRelationshipView[];
+  people?: FamilyMemberView[];
+  onDeleteRelationship?: (relationshipId: string) => void;
   home: HomeCopy;
 };
 
@@ -21,6 +24,9 @@ export function MemberInspectorModal({
   onClose,
   onUpdate,
   onDelete,
+  relationships = [],
+  people = [],
+  onDeleteRelationship,
   home,
 }: MemberInspectorModalProps) {
   const [name, setName] = useState("");
@@ -36,6 +42,10 @@ export function MemberInspectorModal({
   }, [person]);
 
   if (!isOpen || !person) return null;
+
+  const personRelationships = relationships.filter(
+    (r) => r.fromId === person.id || r.toId === person.id
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +110,48 @@ export function MemberInspectorModal({
                   📍 {person.meta}
                 </span>
               ) : null}
+            </div>
+          </div>
+
+          {/* Active Connections Section */}
+          <div className="rounded-[1.25rem] border border-[var(--line)] bg-white p-4 shadow-xs">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Active Connections ({personRelationships.length})
+              </p>
+            </div>
+            <div className="mt-3 space-y-2">
+              {personRelationships.map((rel) => {
+                const otherId = rel.fromId === person.id ? rel.toId : rel.fromId;
+                const otherPerson = people.find((p) => p.id === otherId);
+                const isFrom = rel.fromId === person.id;
+                const relLabel = isFrom ? rel.type : `Related to (${rel.type})`;
+
+                return (
+                  <div
+                    key={rel.id}
+                    className="flex items-center justify-between rounded-[0.75rem] border border-[var(--line)] bg-gray-50/80 px-3 py-2 text-xs"
+                  >
+                    <div className="truncate pr-2">
+                      <span className="font-semibold text-gray-700">{relLabel}</span>{" "}
+                      <span className="font-bold text-[var(--accent)]">
+                        {otherPerson?.name || rel.toName || rel.fromName || "Relative"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteRelationship?.(rel.id)}
+                      className="shrink-0 rounded bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-100"
+                      title="Remove Connection"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                );
+              })}
+              {personRelationships.length === 0 && (
+                <p className="text-xs text-[var(--muted)]">No active relationship links.</p>
+              )}
             </div>
           </div>
 
