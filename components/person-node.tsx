@@ -9,6 +9,24 @@ export const PersonNode = memo(function PersonNode({
 }: NodeProps<Node<PersonNodeData>>) {
   const initial = data.name ? data.name.trim().slice(0, 1).toUpperCase() : "?";
 
+  const birthEvent = data.events?.find((e) => e.type === "birth");
+  const deathEvent = data.events?.find((e) => e.type === "death");
+  const getYear = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const match = dateStr.match(/\d{4}/);
+    return match ? match[0] : dateStr;
+  };
+  const birthYear = getYear(birthEvent?.date);
+  const deathYear = getYear(deathEvent?.date);
+  const dateSpan =
+    birthYear && deathYear
+      ? `b. ${birthYear} — d. ${deathYear}`
+      : birthYear
+      ? `b. ${birthYear}`
+      : deathYear
+      ? `d. ${deathYear}`
+      : null;
+
   return (
     <div
       onClick={(e) => {
@@ -82,7 +100,11 @@ export const PersonNode = memo(function PersonNode({
           <p className="truncate text-sm font-bold text-[var(--text)]" title={data.name}>
             {data.name}
           </p>
-          {data.meta ? (
+          {dateSpan ? (
+            <p className="truncate text-[11px] font-medium text-amber-700">
+              {dateSpan}
+            </p>
+          ) : data.meta ? (
             <p className="truncate text-xs text-[var(--muted)]" title={data.meta}>
               {data.meta}
             </p>

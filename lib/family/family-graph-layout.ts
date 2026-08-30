@@ -1,6 +1,6 @@
 import dagre from "dagre";
 import type { Node, Edge } from "@xyflow/react";
-import type { FamilyMemberView, FamilyRelationshipView } from "@/lib/family/types";
+import type { FamilyMemberView, FamilyRelationshipView, LifeEvent } from "@/lib/family/types";
 
 export type PersonNodeData = {
   id: string;
@@ -8,6 +8,7 @@ export type PersonNodeData = {
   role: string;
   meta: string;
   tags: string[];
+  events?: LifeEvent[];
   isExpanded: boolean;
   hasConnections: boolean;
   isFocus: boolean;
@@ -233,6 +234,7 @@ export function buildFamilyGraphLayout(
         role: person.role,
         meta: person.meta,
         tags: person.tags,
+        events: person.events,
         isExpanded: !isCollapsed,
         hasConnections,
         isFocus: person.id === focusPersonId,

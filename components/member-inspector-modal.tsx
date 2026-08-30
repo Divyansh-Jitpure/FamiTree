@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/i18n/config";
-import type { FamilyMemberView, FamilyRelationshipView } from "@/lib/family/types";
+import type { FamilyMemberView, FamilyRelationshipView, LifeEvent } from "@/lib/family/types";
 
 type HomeCopy = Dictionary["home"];
 
@@ -32,14 +32,40 @@ export function MemberInspectorModal({
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [meta, setMeta] = useState("");
+  const [events, setEvents] = useState<LifeEvent[]>([]);
+
+  const [isAddingEvent, setIsAddingEvent] = useState(false);
+  const [newEventData, setNewEventData] = useState<{
+    type: "birth" | "death" | "marriage" | "custom";
+    date: string;
+    label: string;
+    location: string;
+  }>({ type: "birth", date: "", label: "", location: "" });
 
   useEffect(() => {
     if (person) {
       setName(person.name || "");
       setRole(person.role || "");
-      setMeta(person.meta || "");
+      const defaultMetaStr = home?.defaultMeta || "Location not added yet";
+      const isDefault =
+        !person.meta ||
+        person.meta === defaultMetaStr ||
+        person.meta === "Location not added yet";
+      setMeta(isDefault ? "" : person.meta);
+      setEvents(person.events || []);
+      setIsAddingEvent(false);
     }
-  }, [person]);
+  }, [person, home?.defaultMeta]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalStyle = window.getComputedStyle(document.body).overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen || !person) return null;
 
@@ -47,22 +73,32 @@ export function MemberInspectorModal({
     (r) => r.fromId === person.id || r.toId === person.id
   );
 
-  // Infer co-parent connections via spouse
+  // Infer co-parent connections via spouse (Bi-directional)
   const inferredCoParents: FamilyRelationshipView[] = [];
+
+  // Direction A: Inspecting a Child -> Infer parents (spouses of their explicit parent)
   relationships.forEach((rel) => {
     if (rel.type.toLowerCase().includes("parent") && rel.toId === person.id) {
-      // This person is a child of rel.fromId — find spouse of that parent
+      const parentId = rel.fromId;
       const parentSpouses = relationships.filter((r) => {
         const t = r.type.toLowerCase();
-        const isSpouse = t.includes("spouse") || t.includes("patni") || t.includes("pati") || t.includes("wife") || t.includes("husband");
-        return isSpouse && (r.fromId === rel.fromId || r.toId === rel.fromId);
+        const isSpouse =
+          t.includes("spouse") ||
+          t.includes("patni") ||
+          t.includes("pati") ||
+          t.includes("wife") ||
+          t.includes("husband");
+        return isSpouse && (r.fromId === parentId || r.toId === parentId);
       });
+
       parentSpouses.forEach((sp) => {
-        const spouseId = sp.fromId === rel.fromId ? sp.toId : sp.fromId;
+        const spouseId = sp.fromId === parentId ? sp.toId : sp.fromId;
         const alreadyExplicit = explicitRelationships.some(
           (r) => (r.fromId === spouseId && r.toId === person.id) || (r.fromId === person.id && r.toId === spouseId)
         );
-        const alreadyInferred = inferredCoParents.some((r) => r.fromId === spouseId);
+        const alreadyInferred = inferredCoParents.some(
+          (r) => r.fromId === spouseId && r.toId === person.id
+        );
         if (!alreadyExplicit && !alreadyInferred) {
           const spousePerson = people.find((p) => p.id === spouseId);
           inferredCoParents.push({
@@ -78,6 +114,47 @@ export function MemberInspectorModal({
     }
   });
 
+  // Direction B: Inspecting a Spouse -> Infer children (children of their spouse)
+  const spousesOfPerson = relationships.filter((r) => {
+    const t = r.type.toLowerCase();
+    const isSpouse =
+      t.includes("spouse") ||
+      t.includes("patni") ||
+      t.includes("pati") ||
+      t.includes("wife") ||
+      t.includes("husband");
+    return isSpouse && (r.fromId === person.id || r.toId === person.id);
+  });
+
+  spousesOfPerson.forEach((sp) => {
+    const spouseId = sp.fromId === person.id ? sp.toId : sp.fromId;
+    const spouseChildrenRels = relationships.filter(
+      (r) => r.fromId === spouseId && r.type.toLowerCase().includes("parent")
+    );
+
+    spouseChildrenRels.forEach((childRel) => {
+      const childId = childRel.toId;
+      const alreadyExplicit = explicitRelationships.some(
+        (r) => (r.fromId === person.id && r.toId === childId) || (r.fromId === childId && r.toId === person.id)
+      );
+      const alreadyInferred = inferredCoParents.some(
+        (r) => r.fromId === person.id && r.toId === childId
+      );
+
+      if (!alreadyExplicit && !alreadyInferred) {
+        const childPerson = people.find((p) => p.id === childId);
+        inferredCoParents.push({
+          id: `inferred-coparent-${person.id}-${childId}`,
+          fromId: person.id,
+          toId: childId,
+          fromName: person.name,
+          toName: childPerson?.name || "Child",
+          type: "Parent of",
+        });
+      }
+    });
+  });
+
   const personRelationships = [...explicitRelationships, ...inferredCoParents];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -87,8 +164,55 @@ export function MemberInspectorModal({
       name,
       role,
       meta,
+      events,
     });
     onClose();
+  };
+
+  const handleAddEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEventData.date) return;
+
+    const defaultLabels: Record<string, string> = {
+      birth: "Birth",
+      death: "Death",
+      marriage: "Marriage",
+      custom: "Event",
+    };
+
+    const newEv: LifeEvent = {
+      id: `event-${Date.now()}`,
+      type: newEventData.type,
+      date: newEventData.date,
+      label: newEventData.label.trim() || defaultLabels[newEventData.type] || "Event",
+      location: newEventData.location.trim() || undefined,
+    };
+
+    const updatedEvents = [...events, newEv].sort((a, b) => a.date.localeCompare(b.date));
+    setEvents(updatedEvents);
+    setNewEventData({ type: "birth", date: "", label: "", location: "" });
+    setIsAddingEvent(false);
+
+    // Auto save on event add
+    onUpdate({
+      ...person,
+      name,
+      role,
+      meta,
+      events: updatedEvents,
+    });
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    const updatedEvents = events.filter((e) => e.id !== eventId);
+    setEvents(updatedEvents);
+    onUpdate({
+      ...person,
+      name,
+      role,
+      meta,
+      events: updatedEvents,
+    });
   };
 
   const handleDelete = () => {
@@ -138,11 +262,9 @@ export function MemberInspectorModal({
               <span className="rounded-full bg-[#edf4ee] px-3 py-1 text-xs font-semibold text-[var(--forest)]">
                 {person.role}
               </span>
-              {person.meta ? (
-                <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-medium text-[var(--muted)]">
-                  📍 {person.meta}
-                </span>
-              ) : null}
+              <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-medium text-[var(--muted)]">
+                📍 {person.meta || home?.defaultMeta || "Location not added yet"}
+              </span>
             </div>
           </div>
 
@@ -160,8 +282,12 @@ export function MemberInspectorModal({
                 const isFrom = rel.fromId === person.id;
                 const isInferred = rel.id.startsWith("inferred-coparent-");
                 const relLabel = isInferred
-                  ? "Parent (via Spouse)"
-                  : isFrom ? rel.type : `Related to (${rel.type})`;
+                  ? isFrom
+                    ? "Parent of (via Spouse)"
+                    : "Parent (via Spouse)"
+                  : isFrom
+                  ? rel.type
+                  : `Related to (${rel.type})`;
 
                 return (
                   <div
@@ -201,6 +327,161 @@ export function MemberInspectorModal({
             </div>
           </div>
 
+          {/* Life Events Section */}
+          <div className="rounded-[1.25rem] border border-[var(--line)] bg-white p-4 shadow-xs">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Life Events ({events.length})
+              </p>
+              {!isAddingEvent && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingEvent(true)}
+                  className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors"
+                >
+                  + Add Event
+                </button>
+              )}
+            </div>
+
+            {/* Inline Add Event Form */}
+            {isAddingEvent && (
+              <form onSubmit={handleAddEvent} className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700">Event Type</label>
+                  <select
+                    value={newEventData.type}
+                    onChange={(e) =>
+                      setNewEventData((prev) => ({
+                        ...prev,
+                        type: e.target.value as any,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 outline-none focus:border-amber-500"
+                  >
+                    <option value="birth">🎂 Birth</option>
+                    <option value="death">✝ Death</option>
+                    <option value="marriage">💍 Marriage</option>
+                    <option value="custom">⭐ Custom Event</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold text-gray-700">Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newEventData.date}
+                      onChange={(e) =>
+                        setNewEventData((prev) => ({ ...prev, date: e.target.value }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700">Label (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder={
+                        newEventData.type === "birth"
+                          ? "Birth"
+                          : newEventData.type === "death"
+                          ? "Death"
+                          : newEventData.type === "marriage"
+                          ? "Marriage"
+                          : "Graduation, etc."
+                      }
+                      value={newEventData.label}
+                      onChange={(e) =>
+                        setNewEventData((prev) => ({ ...prev, label: e.target.value }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700">Location (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. City, Hospital, Church"
+                    value={newEventData.location}
+                    onChange={(e) =>
+                      setNewEventData((prev) => ({ ...prev, location: e.target.value }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingEvent(false)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-1 font-semibold text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-amber-600 px-3 py-1 font-bold text-white shadow-xs hover:bg-amber-700"
+                  >
+                    Save Event
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Events Timeline */}
+            <div className="mt-3 space-y-2">
+              {events.map((ev) => {
+                const icon =
+                  ev.type === "birth"
+                    ? "🎂"
+                    : ev.type === "death"
+                    ? "✝"
+                    : ev.type === "marriage"
+                    ? "💍"
+                    : "⭐";
+
+                return (
+                  <div
+                    key={ev.id}
+                    className="flex items-center justify-between rounded-xl border border-[var(--line)] bg-gray-50/80 px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 truncate pr-2">
+                      <span className="text-base">{icon}</span>
+                      <div className="truncate">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-800">{ev.label || ev.type}</span>
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                            {ev.date}
+                          </span>
+                        </div>
+                        {ev.location && (
+                          <p className="truncate text-[11px] text-[var(--muted)]">
+                            📍 {ev.location}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="shrink-0 rounded bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-100"
+                      title="Delete Event"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              {events.length === 0 && !isAddingEvent && (
+                <p className="text-xs text-[var(--muted)]">No life events recorded yet.</p>
+              )}
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[var(--text)]">
@@ -235,7 +516,7 @@ export function MemberInspectorModal({
                 type="text"
                 value={meta}
                 onChange={(e) => setMeta(e.target.value)}
-                placeholder="e.g. City, Country"
+                placeholder={home?.defaultMeta || "Location not added yet"}
                 className="mt-1.5 w-full rounded-[1rem] border border-[var(--line)] px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>

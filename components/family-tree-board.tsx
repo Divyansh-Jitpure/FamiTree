@@ -220,7 +220,7 @@ function TreeBoardInner({
       id: `node-${Date.now()}`,
       name: fullName,
       role: data.relation.trim() || "Member",
-      meta: data.city.trim() || home.defaultMeta,
+      meta: data.city.trim(),
       tags: [home.defaultTag, data.note.trim() ? home.noteTag : home.addressTag],
     };
 
