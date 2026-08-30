@@ -86,7 +86,75 @@ export function buildFamilyGraphLayout(
     }
   });
 
-  // Perform layout calculation for initial X positions
+  // Infer spouse-as-co-parent: if A is parent of children and A is spouse of B,
+  // then B is also parent of those children
+  const spousePairs = new Map<string, string[]>();
+  visibleRelationships.forEach((rel) => {
+    const t = rel.type.toLowerCase();
+    if (
+      t.includes("spouse") ||
+      t.includes("patni") ||
+      t.includes("pati") ||
+      t.includes("wife") ||
+      t.includes("husband")
+    ) {
+      const aSpouses = spousePairs.get(rel.fromId) || [];
+      if (!aSpouses.includes(rel.toId)) aSpouses.push(rel.toId);
+      spousePairs.set(rel.fromId, aSpouses);
+
+      const bSpouses = spousePairs.get(rel.toId) || [];
+      if (!bSpouses.includes(rel.fromId)) bSpouses.push(rel.fromId);
+      spousePairs.set(rel.toId, bSpouses);
+    }
+  });
+
+  // Collect explicit parent->child mappings
+  const explicitParentChildren = new Map<string, string[]>();
+  visibleRelationships.forEach((rel) => {
+    if (rel.type.toLowerCase().includes("parent")) {
+      const children = explicitParentChildren.get(rel.fromId) || [];
+      if (!children.includes(rel.toId)) children.push(rel.toId);
+      explicitParentChildren.set(rel.fromId, children);
+    }
+  });
+
+  // Infer co-parent edges for spouses
+  const inferredRelationships = [...visibleRelationships];
+  explicitParentChildren.forEach((children, parentId) => {
+    const spouses = spousePairs.get(parentId) || [];
+    spouses.forEach((spouseId) => {
+      const spousePerson = visiblePeople.find((p) => p.id === spouseId);
+      if (!spousePerson) return;
+
+      children.forEach((childId) => {
+        const childPerson = visiblePeople.find((p) => p.id === childId);
+        if (!childPerson) return;
+
+        // Check if this co-parent edge already exists
+        const exists = inferredRelationships.some(
+          (r) =>
+            (r.fromId === spouseId && r.toId === childId && r.type.toLowerCase().includes("parent")) ||
+            (r.fromId === childId && r.toId === spouseId && (r.type.toLowerCase().includes("child") || r.type.toLowerCase().includes("son") || r.type.toLowerCase().includes("daughter")))
+        );
+
+        if (!exists) {
+          inferredRelationships.push({
+            id: `inferred-coparent-${spouseId}-${childId}`,
+            fromId: spouseId,
+            toId: childId,
+            fromName: spousePerson.name,
+            toName: childPerson.name,
+            type: "Parent of",
+          });
+
+          // Also add dagre edge for layout
+          dagreGraph.setEdge(spouseId, childId, { minlen: 1, weight: 1 });
+        }
+      });
+    });
+  });
+
+  // Re-run layout with co-parent edges included
   dagre.layout(dagreGraph);
 
   const getPersonX = (personId: string) => {
@@ -99,10 +167,9 @@ export function buildFamilyGraphLayout(
   };
 
   // Automatically infer sibling relationships for children sharing a common parent
-  const inferredRelationships = [...visibleRelationships];
   const parentToChildren = new Map<string, string[]>();
 
-  visibleRelationships.forEach((rel) => {
+  inferredRelationships.forEach((rel) => {
     if (rel.type.toLowerCase().includes("parent")) {
       const children = parentToChildren.get(rel.fromId) || [];
       if (!children.includes(rel.toId)) children.push(rel.toId);

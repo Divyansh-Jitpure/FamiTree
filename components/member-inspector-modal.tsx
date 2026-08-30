@@ -43,9 +43,42 @@ export function MemberInspectorModal({
 
   if (!isOpen || !person) return null;
 
-  const personRelationships = relationships.filter(
+  const explicitRelationships = relationships.filter(
     (r) => r.fromId === person.id || r.toId === person.id
   );
+
+  // Infer co-parent connections via spouse
+  const inferredCoParents: FamilyRelationshipView[] = [];
+  relationships.forEach((rel) => {
+    if (rel.type.toLowerCase().includes("parent") && rel.toId === person.id) {
+      // This person is a child of rel.fromId — find spouse of that parent
+      const parentSpouses = relationships.filter((r) => {
+        const t = r.type.toLowerCase();
+        const isSpouse = t.includes("spouse") || t.includes("patni") || t.includes("pati") || t.includes("wife") || t.includes("husband");
+        return isSpouse && (r.fromId === rel.fromId || r.toId === rel.fromId);
+      });
+      parentSpouses.forEach((sp) => {
+        const spouseId = sp.fromId === rel.fromId ? sp.toId : sp.fromId;
+        const alreadyExplicit = explicitRelationships.some(
+          (r) => (r.fromId === spouseId && r.toId === person.id) || (r.fromId === person.id && r.toId === spouseId)
+        );
+        const alreadyInferred = inferredCoParents.some((r) => r.fromId === spouseId);
+        if (!alreadyExplicit && !alreadyInferred) {
+          const spousePerson = people.find((p) => p.id === spouseId);
+          inferredCoParents.push({
+            id: `inferred-coparent-${spouseId}-${person.id}`,
+            fromId: spouseId,
+            toId: person.id,
+            fromName: spousePerson?.name || "Co-Parent",
+            toName: person.name,
+            type: "Parent of",
+          });
+        }
+      });
+    }
+  });
+
+  const personRelationships = [...explicitRelationships, ...inferredCoParents];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,12 +158,19 @@ export function MemberInspectorModal({
                 const otherId = rel.fromId === person.id ? rel.toId : rel.fromId;
                 const otherPerson = people.find((p) => p.id === otherId);
                 const isFrom = rel.fromId === person.id;
-                const relLabel = isFrom ? rel.type : `Related to (${rel.type})`;
+                const isInferred = rel.id.startsWith("inferred-coparent-");
+                const relLabel = isInferred
+                  ? "Parent (via Spouse)"
+                  : isFrom ? rel.type : `Related to (${rel.type})`;
 
                 return (
                   <div
                     key={rel.id}
-                    className="flex items-center justify-between rounded-[0.75rem] border border-[var(--line)] bg-gray-50/80 px-3 py-2 text-xs"
+                    className={`flex items-center justify-between rounded-[0.75rem] border px-3 py-2 text-xs ${
+                      isInferred
+                        ? "border-dashed border-amber-300 bg-amber-50/60"
+                        : "border-[var(--line)] bg-gray-50/80"
+                    }`}
                   >
                     <div className="truncate pr-2">
                       <span className="font-semibold text-gray-700">{relLabel}</span>{" "}
@@ -138,14 +178,20 @@ export function MemberInspectorModal({
                         {otherPerson?.name || rel.toName || rel.fromName || "Relative"}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteRelationship?.(rel.id)}
-                      className="shrink-0 rounded bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-100"
-                      title="Remove Connection"
-                    >
-                      ✕ Remove
-                    </button>
+                    {isInferred ? (
+                      <span className="shrink-0 rounded bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-600">
+                        Auto
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRelationship?.(rel.id)}
+                        className="shrink-0 rounded bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-100"
+                        title="Remove Connection"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
                   </div>
                 );
               })}
