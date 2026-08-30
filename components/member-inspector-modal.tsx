@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/i18n/config";
 import type { FamilyMemberView, FamilyRelationshipView, LifeEvent } from "@/lib/family/types";
+import { getLocalizedRelType, getLocalizedRole } from "@/lib/family/family-graph-layout";
 
 type HomeCopy = Dictionary["home"];
 
@@ -45,7 +46,7 @@ export function MemberInspectorModal({
   useEffect(() => {
     if (person) {
       setName(person.name || "");
-      setRole(person.role || "");
+      setRole(getLocalizedRole(person.role || "", home));
       const defaultMetaStr = home?.defaultMeta || "Location not added yet";
       const isDefault =
         !person.meta ||
@@ -55,7 +56,7 @@ export function MemberInspectorModal({
       setEvents(person.events || []);
       setIsAddingEvent(false);
     }
-  }, [person, home?.defaultMeta]);
+  }, [person, home]);
 
   useEffect(() => {
     if (isOpen) {
@@ -256,14 +257,14 @@ export function MemberInspectorModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-strong)] p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
-              Member Overview
+              {home.boardLabels?.memberOverview || "Member Overview"}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded-full bg-[#edf4ee] px-3 py-1 text-xs font-semibold text-[var(--forest)]">
-                {person.role}
+                {getLocalizedRole(person.role, home)}
               </span>
               <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-medium text-[var(--muted)]">
-                📍 {person.meta || home?.defaultMeta || "Location not added yet"}
+                📍 {person.meta && person.meta !== "Location not added yet" && person.meta !== home?.defaultMeta ? person.meta : (home?.defaultMeta || "Location not added yet")}
               </span>
             </div>
           </div>
@@ -272,7 +273,7 @@ export function MemberInspectorModal({
           <div className="rounded-[1.25rem] border border-[var(--line)] bg-white p-4 shadow-xs">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Active Connections ({personRelationships.length})
+                {home.boardLabels?.activeConnections || "Active Connections"} ({personRelationships.length})
               </p>
             </div>
             <div className="mt-3 space-y-2">
@@ -281,13 +282,14 @@ export function MemberInspectorModal({
                 const otherPerson = people.find((p) => p.id === otherId);
                 const isFrom = rel.fromId === person.id;
                 const isInferred = rel.id.startsWith("inferred-coparent-");
+                const localizedType = getLocalizedRelType(rel.type, home);
                 const relLabel = isInferred
                   ? isFrom
-                    ? "Parent of (via Spouse)"
-                    : "Parent (via Spouse)"
+                    ? home.boardLabels?.parentOfViaSpouse || "Parent of (via Spouse)"
+                    : home.boardLabels?.parentViaSpouse || "Parent (via Spouse)"
                   : isFrom
-                  ? rel.type
-                  : `Related to (${rel.type})`;
+                  ? localizedType
+                  : `${home.boardLabels?.relatedTo || "Related to"} (${localizedType})`;
 
                 return (
                   <div
@@ -306,7 +308,7 @@ export function MemberInspectorModal({
                     </div>
                     {isInferred ? (
                       <span className="shrink-0 rounded bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-600">
-                        Auto
+                        {home.boardLabels?.autoBadge || "Auto"}
                       </span>
                     ) : (
                       <button
@@ -315,14 +317,16 @@ export function MemberInspectorModal({
                         className="shrink-0 rounded bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-100"
                         title="Remove Connection"
                       >
-                        ✕ Remove
+                        {home.boardLabels?.remove || "✕ Remove"}
                       </button>
                     )}
                   </div>
                 );
               })}
               {personRelationships.length === 0 && (
-                <p className="text-xs text-[var(--muted)]">No active relationship links.</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {home.boardLabels?.noConnections || "No active relationship links."}
+                </p>
               )}
             </div>
           </div>
@@ -331,7 +335,7 @@ export function MemberInspectorModal({
           <div className="rounded-[1.25rem] border border-[var(--line)] bg-white p-4 shadow-xs">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Life Events ({events.length})
+                {home.boardLabels?.lifeEvents || "Life Events"} ({events.length})
               </p>
               {!isAddingEvent && (
                 <button
@@ -339,7 +343,7 @@ export function MemberInspectorModal({
                   onClick={() => setIsAddingEvent(true)}
                   className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors"
                 >
-                  + Add Event
+                  {home.boardLabels?.addEvent || "+ Add Event"}
                 </button>
               )}
             </div>
@@ -348,7 +352,9 @@ export function MemberInspectorModal({
             {isAddingEvent && (
               <form onSubmit={handleAddEvent} className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3 text-xs">
                 <div>
-                  <label className="block font-semibold text-gray-700">Event Type</label>
+                  <label className="block font-semibold text-gray-700">
+                    {home.boardLabels?.eventType || "Event Type"}
+                  </label>
                   <select
                     value={newEventData.type}
                     onChange={(e) =>
@@ -359,16 +365,18 @@ export function MemberInspectorModal({
                     }
                     className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 outline-none focus:border-amber-500"
                   >
-                    <option value="birth">🎂 Birth</option>
-                    <option value="death">✝ Death</option>
-                    <option value="marriage">💍 Marriage</option>
-                    <option value="custom">⭐ Custom Event</option>
+                    <option value="birth">🎂 {home.boardLabels?.birth || "Birth"}</option>
+                    <option value="death">✝ {home.boardLabels?.death || "Death"}</option>
+                    <option value="marriage">💍 {home.boardLabels?.marriage || "Marriage"}</option>
+                    <option value="custom">⭐ {home.boardLabels?.customEvent || "Custom Event"}</option>
                   </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block font-semibold text-gray-700">Date *</label>
+                    <label className="block font-semibold text-gray-700">
+                      {home.boardLabels?.eventDate || "Date *"}
+                    </label>
                     <input
                       type="date"
                       required
@@ -380,16 +388,18 @@ export function MemberInspectorModal({
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-gray-700">Label (Optional)</label>
+                    <label className="block font-semibold text-gray-700">
+                      {home.boardLabels?.eventLabel || "Label (Optional)"}
+                    </label>
                     <input
                       type="text"
                       placeholder={
                         newEventData.type === "birth"
-                          ? "Birth"
+                          ? home.boardLabels?.birth || "Birth"
                           : newEventData.type === "death"
-                          ? "Death"
+                          ? home.boardLabels?.death || "Death"
                           : newEventData.type === "marriage"
-                          ? "Marriage"
+                          ? home.boardLabels?.marriage || "Marriage"
                           : "Graduation, etc."
                       }
                       value={newEventData.label}
@@ -402,7 +412,9 @@ export function MemberInspectorModal({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700">Location (Optional)</label>
+                  <label className="block font-semibold text-gray-700">
+                    {home.boardLabels?.eventLocation || "Location (Optional)"}
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. City, Hospital, Church"
@@ -420,13 +432,13 @@ export function MemberInspectorModal({
                     onClick={() => setIsAddingEvent(false)}
                     className="rounded-lg border border-gray-300 bg-white px-3 py-1 font-semibold text-gray-600 hover:bg-gray-50"
                   >
-                    Cancel
+                    {home.boardLabels?.cancel || "Cancel"}
                   </button>
                   <button
                     type="submit"
                     className="rounded-lg bg-amber-600 px-3 py-1 font-bold text-white shadow-xs hover:bg-amber-700"
                   >
-                    Save Event
+                    {home.boardLabels?.saveEvent || "Save Event"}
                   </button>
                 </div>
               </form>
@@ -444,6 +456,17 @@ export function MemberInspectorModal({
                     ? "💍"
                     : "⭐";
 
+                const displayLabel =
+                  ev.type === "birth" && (!ev.label || ev.label === "Birth")
+                    ? home.boardLabels?.birth || "Birth"
+                    : ev.type === "death" && (!ev.label || ev.label === "Death")
+                    ? home.boardLabels?.death || "Death"
+                    : ev.type === "marriage" && (!ev.label || ev.label === "Marriage")
+                    ? home.boardLabels?.marriage || "Marriage"
+                    : ev.type === "custom" && (!ev.label || ev.label === "Event" || ev.label === "Custom Event")
+                    ? home.boardLabels?.customEvent || "Custom Event"
+                    : ev.label || ev.type;
+
                 return (
                   <div
                     key={ev.id}
@@ -453,7 +476,7 @@ export function MemberInspectorModal({
                       <span className="text-base">{icon}</span>
                       <div className="truncate">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-800">{ev.label || ev.type}</span>
+                          <span className="font-bold text-gray-800">{displayLabel}</span>
                           <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                             {ev.date}
                           </span>
@@ -477,7 +500,9 @@ export function MemberInspectorModal({
                 );
               })}
               {events.length === 0 && !isAddingEvent && (
-                <p className="text-xs text-[var(--muted)]">No life events recorded yet.</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {home.boardLabels?.noLifeEvents || "No life events recorded yet."}
+                </p>
               )}
             </div>
           </div>
@@ -485,7 +510,7 @@ export function MemberInspectorModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[var(--text)]">
-                Full Name *
+                {home.boardLabels?.fullName || "Full Name *"}
               </label>
               <input
                 type="text"
@@ -498,7 +523,7 @@ export function MemberInspectorModal({
 
             <div>
               <label className="block text-xs font-semibold text-[var(--text)]">
-                Primary Relation / Role
+                {home.boardLabels?.primaryRelation || "Primary Relation / Role"}
               </label>
               <input
                 type="text"
@@ -510,7 +535,7 @@ export function MemberInspectorModal({
 
             <div>
               <label className="block text-xs font-semibold text-[var(--text)]">
-                Location / Metadata
+                {home.boardLabels?.locationMetadata || "Location / Metadata"}
               </label>
               <input
                 type="text"
@@ -527,7 +552,7 @@ export function MemberInspectorModal({
                 onClick={handleDelete}
                 className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-600 hover:bg-rose-100"
               >
-                Delete Member
+                {home.boardLabels?.deleteMember || "Delete Member"}
               </button>
               <div className="flex gap-2">
                 <button
@@ -535,13 +560,13 @@ export function MemberInspectorModal({
                   onClick={onClose}
                   className="rounded-[1rem] border border-[var(--line)] px-4 py-3 text-xs font-semibold text-[var(--text)] hover:bg-gray-50"
                 >
-                  Cancel
+                  {home.boardLabels?.cancel || "Cancel"}
                 </button>
                 <button
                   type="submit"
                   className="rounded-[1rem] bg-[var(--accent)] px-5 py-3 text-xs font-bold text-white shadow-sm hover:opacity-90"
                 >
-                  Save Changes
+                  {home.boardLabels?.save || "Save Changes"}
                 </button>
               </div>
             </div>

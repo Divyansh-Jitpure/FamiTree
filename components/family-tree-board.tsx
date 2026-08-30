@@ -157,7 +157,8 @@ function TreeBoardInner({
       people,
       relationships,
       collapsedNodeIds,
-      focusPersonId || people[0]?.id
+      focusPersonId || people[0]?.id,
+      home
     );
 
     const nodesWithHandlers = layout.nodes.map((node) => ({
@@ -176,6 +177,7 @@ function TreeBoardInner({
     relationships,
     collapsedNodeIds,
     focusPersonId,
+    home,
     handleToggleExpand,
     handleAddRelative,
     handleOpenInspector,

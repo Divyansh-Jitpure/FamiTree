@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/i18n/config";
 import type { FamilyMemberView } from "@/lib/family/types";
+import { getLocalizedRole } from "@/lib/family/family-graph-layout";
 
 type HomeCopy = Dictionary["home"];
 
@@ -70,13 +71,13 @@ export function MembersDirectoryPage({
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <span className="inline-flex rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-              {people.length} Total Members
+              {people.length} {home.totalMembersCount || "Total Members"}
             </span>
             <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
-              {home.familyPanelLabel}
+              {home.directoryTitle || home.familyPanelLabel || "Family Members"}
             </h1>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Search and filter your entire family directory.
+              {home.directoryDescription || "Search and filter your entire family directory."}
             </p>
           </div>
 
@@ -85,7 +86,7 @@ export function MembersDirectoryPage({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search member or location..."
+              placeholder={home.searchDirectoryPlaceholder || "Search member or location..."}
               className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--accent)]"
             />
             <select
@@ -93,10 +94,10 @@ export function MembersDirectoryPage({
               onChange={(e) => setSelectedRole(e.target.value)}
               className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--accent)]"
             >
-              <option value="all">All Roles ({people.length})</option>
+              <option value="all">{home.allRoles || "All Roles"} ({people.length})</option>
               {roles.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {getLocalizedRole(r, home)}
                 </option>
               ))}
             </select>
@@ -116,10 +117,14 @@ export function MembersDirectoryPage({
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="truncate font-bold text-[var(--text)]">{person.name}</h3>
                   <span className="rounded-full bg-[#edf4ee] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--forest)] shrink-0">
-                    {person.role}
+                    {getLocalizedRole(person.role, home)}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-[var(--muted)]">{person.meta}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {person.meta && person.meta !== "Location not added yet" && person.meta !== home.defaultMeta
+                    ? person.meta
+                    : home.defaultMeta || "Location not added yet"}
+                </p>
 
                 {person.tags && person.tags.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -142,8 +147,8 @@ export function MembersDirectoryPage({
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-sm font-semibold text-[var(--muted)]">
               {people.length === 0
-                ? "Your family directory is empty."
-                : "No family members match your search query."}
+                ? home.emptyDirectory || "Your family directory is empty."
+                : home.noDirectoryMatch || "No family members match your search query."}
             </p>
             {people.length === 0 && (
               <button
@@ -155,7 +160,7 @@ export function MembersDirectoryPage({
                 }}
                 className="mt-4 rounded-full border border-[var(--line)] bg-white px-5 py-2.5 text-xs font-bold text-[var(--text)] shadow-sm hover:bg-gray-50"
               >
-                Restore Sample Tree
+                {home.restoreSampleTree || "Restore Sample Tree"}
               </button>
             )}
           </div>

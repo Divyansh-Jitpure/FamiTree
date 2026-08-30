@@ -16,15 +16,17 @@ export const PersonNode = memo(function PersonNode({
     const match = dateStr.match(/\d{4}/);
     return match ? match[0] : dateStr;
   };
+  const bPrefix = data.home?.boardLabels?.birthPrefix || "b.";
+  const dPrefix = data.home?.boardLabels?.deathPrefix || "d.";
   const birthYear = getYear(birthEvent?.date);
   const deathYear = getYear(deathEvent?.date);
   const dateSpan =
     birthYear && deathYear
-      ? `b. ${birthYear} — d. ${deathYear}`
+      ? `${bPrefix} ${birthYear} — ${dPrefix} ${deathYear}`
       : birthYear
-      ? `b. ${birthYear}`
+      ? `${bPrefix} ${birthYear}`
       : deathYear
-      ? `d. ${deathYear}`
+      ? `${dPrefix} ${deathYear}`
       : null;
 
   return (

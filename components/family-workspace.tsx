@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import type { Dictionary } from "@/lib/i18n/config";
 import { FamilyTreeBoard } from "@/components/family-tree-board";
+import { getLocalizedRole } from "@/lib/family/family-graph-layout";
 import type {
   FamilyMemberView,
   FamilyRelationshipView,
@@ -133,14 +134,14 @@ export function FamilyWorkspace({
                 href={`/${locale}/tree`}
                 className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-white shadow-md transition hover:opacity-95 active:scale-95"
               >
-                <span>Launch Interactive Canvas</span>
+                <span>{home.launchCanvas || "Launch Interactive Canvas"}</span>
                 <span className="text-lg">➔</span>
               </Link>
               <Link
                 href={`/${locale}/members`}
                 className="rounded-full border border-[var(--line)] bg-white/80 px-5 py-3.5 text-sm font-semibold text-[var(--text)] transition hover:bg-white"
               >
-                View Family Directory ({people.length})
+                {home.viewDirectory || "View Family Directory"} ({people.length})
               </Link>
             </div>
           </div>
@@ -149,13 +150,13 @@ export function FamilyWorkspace({
           <aside className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-                Recent Family Members
+                {home.recentMembers || "Recent Family Members"}
               </p>
               <Link
                 href={`/${locale}/members`}
                 className="text-xs font-semibold text-[var(--accent)] hover:underline"
               >
-                View all →
+                {home.viewAll || "View all →"}
               </Link>
             </div>
             <div className="mt-4 space-y-3">
@@ -170,11 +171,15 @@ export function FamilyWorkspace({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold text-sm">{person.name}</p>
-                      <p className="truncate text-xs text-[var(--muted)]">{person.meta}</p>
+                      <p className="truncate text-xs text-[var(--muted)]">
+                        {person.meta && person.meta !== "Location not added yet" && person.meta !== home.defaultMeta
+                          ? person.meta
+                          : home.defaultMeta || "Location not added yet"}
+                      </p>
                     </div>
                   </div>
                   <span className="rounded-full bg-[#edf4ee] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--forest)] shrink-0">
-                    {person.role}
+                    {getLocalizedRole(person.role, home)}
                   </span>
                 </article>
               ))}
@@ -196,7 +201,7 @@ export function FamilyWorkspace({
             href={`/${locale}/tree`}
             className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--accent)] hover:underline"
           >
-            <span>Open Fullscreen Canvas</span>
+            <span>{home.openFullscreenCanvas || "Open Fullscreen Canvas"}</span>
             <span>↗</span>
           </Link>
         </div>

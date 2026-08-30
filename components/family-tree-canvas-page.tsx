@@ -210,10 +210,10 @@ export function FamilyTreeCanvasPage({
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-            {people.length} Members
+            {people.length} {home.membersCount || "Members"}
           </span>
           <span className="rounded-full bg-[#edf4ee] px-3 py-1 text-xs font-semibold text-[var(--forest)]">
-            {relationships.length} Connections
+            {relationships.length} {home.connectionsCount || "Connections"}
           </span>
         </div>
       </div>

@@ -9,6 +9,7 @@ export type PersonNodeData = {
   meta: string;
   tags: string[];
   events?: LifeEvent[];
+  home?: any;
   isExpanded: boolean;
   hasConnections: boolean;
   isFocus: boolean;
@@ -37,11 +38,82 @@ function isSideConnection(type: string): boolean {
   );
 }
 
+export function getLocalizedRelType(type: string, homeCopy?: any): string {
+  if (!homeCopy?.relationshipOptions || !Array.isArray(homeCopy.relationshipOptions)) {
+    return type;
+  }
+  const t = type.toLowerCase();
+  const rels = homeCopy.relationshipOptions as string[];
+
+  if (
+    t.includes("parent") ||
+    t.includes("pita") ||
+    t.includes("mata") ||
+    t.includes("mother") ||
+    t.includes("father") ||
+    t.includes("अभिभावक")
+  ) {
+    return rels[0] || type;
+  }
+  if (
+    t.includes("child") ||
+    t.includes("bache") ||
+    t.includes("son") ||
+    t.includes("daughter") ||
+    t.includes("beta") ||
+    t.includes("beti") ||
+    t.includes("बच्चे")
+  ) {
+    return rels[1] || type;
+  }
+  if (
+    t.includes("spouse") ||
+    t.includes("patni") ||
+    t.includes("pati") ||
+    t.includes("wife") ||
+    t.includes("husband") ||
+    t.includes("जीवनसाथी")
+  ) {
+    return rels[2] || type;
+  }
+  if (
+    t.includes("sibling") ||
+    t.includes("brother") ||
+    t.includes("sister") ||
+    t.includes("bhai") ||
+    t.includes("behen") ||
+    t.includes("भाई-बहन")
+  ) {
+    return rels[3] || type;
+  }
+  if (t.includes("relative") || t.includes("रिश्तेदार")) {
+    return rels[4] || type;
+  }
+  return type;
+}
+
+export function getLocalizedRole(role: string, homeCopy?: any): string {
+  if (!homeCopy?.relationOptions || !Array.isArray(homeCopy.relationOptions)) {
+    return role;
+  }
+  const r = role.toLowerCase();
+  const roles = homeCopy.relationOptions as string[];
+
+  if (r.includes("parent") || r.includes("अभिभावक")) return roles[0] || role;
+  if (r.includes("spouse") || r.includes("जीवनसाथी")) return roles[1] || role;
+  if (r.includes("child") || r.includes("बच्चा")) return roles[2] || role;
+  if (r.includes("sibling") || r.includes("भाई-बहन")) return roles[3] || role;
+  if (r.includes("grandparent") || r.includes("दादा-दादी")) return roles[4] || role;
+  if (r.includes("relative") || r.includes("रिश्तेदार")) return roles[5] || role;
+  return role;
+}
+
 export function buildFamilyGraphLayout(
   people: FamilyMemberView[],
   relationships: FamilyRelationshipView[],
   collapsedNodeIds: Set<string>,
-  focusPersonId?: string | null
+  focusPersonId?: string | null,
+  homeCopy?: any
 ): { nodes: Node<PersonNodeData>[]; edges: Edge[] } {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -231,10 +303,14 @@ export function buildFamilyGraphLayout(
       data: {
         id: person.id,
         name: person.name,
-        role: person.role,
-        meta: person.meta,
+        role: getLocalizedRole(person.role, homeCopy),
+        meta:
+          person.meta && person.meta !== "Location not added yet" && person.meta !== homeCopy?.defaultMeta
+            ? person.meta
+            : homeCopy?.defaultMeta || "Location not added yet",
         tags: person.tags,
         events: person.events,
+        home: homeCopy,
         isExpanded: !isCollapsed,
         hasConnections,
         isFocus: person.id === focusPersonId,
@@ -273,7 +349,7 @@ export function buildFamilyGraphLayout(
       target: rel.toId,
       sourceHandle: isSpouse ? "right" : "bottom",
       targetHandle: isSpouse ? "left" : "top",
-      label: rel.type,
+      label: getLocalizedRelType(rel.type, homeCopy),
       type: "smoothstep",
       animated: isSpouse,
       style: {
@@ -296,14 +372,15 @@ export function buildFamilyGraphLayout(
   });
 
   // Compute clean left-to-right sibling edges using Universal Sibling Engine
-  const siblingEdges = computeSiblingEdges(nodes, visibleRelationships);
+  const siblingEdges = computeSiblingEdges(nodes, visibleRelationships, homeCopy);
 
   return { nodes, edges: [...nonSiblingEdges, ...siblingEdges] };
 }
 
 export function computeSiblingEdges(
   nodes: Node<PersonNodeData>[],
-  relationships: FamilyRelationshipView[]
+  relationships: FamilyRelationshipView[],
+  homeCopy?: any
 ): Edge[] {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
@@ -375,7 +452,7 @@ export function computeSiblingEdges(
           target: rightId,
           sourceHandle: "right",
           targetHandle: "left",
-          label: "Sibling of",
+          label: getLocalizedRelType("Sibling of", homeCopy),
           type: "smoothstep",
           style: { stroke: "#8b5cf6", strokeWidth: 2, strokeDasharray: "4,4" },
           labelStyle: { fill: "#475569", fontWeight: 600, fontSize: 11 },
@@ -419,7 +496,7 @@ export function computeSiblingEdges(
           target: rightId,
           sourceHandle: "right",
           targetHandle: "left",
-          label: rel.type,
+          label: getLocalizedRelType(rel.type, homeCopy),
           type: "smoothstep",
           style: { stroke: "#8b5cf6", strokeWidth: 2, strokeDasharray: "4,4" },
           labelStyle: { fill: "#475569", fontWeight: 600, fontSize: 11 },
