@@ -89,6 +89,15 @@ export function buildFamilyGraphLayout(
   // Perform layout calculation for initial X positions
   dagre.layout(dagreGraph);
 
+  const getPersonX = (personId: string) => {
+    const p = visiblePeople.find((person) => person.id === personId);
+    if (p?.position?.x !== undefined) {
+      return p.position.x;
+    }
+    const dagreNode = dagreGraph.node(personId);
+    return (dagreNode?.x ?? 0) - NODE_WIDTH / 2;
+  };
+
   // Automatically infer sibling relationships for children sharing a common parent
   const inferredRelationships = [...visibleRelationships];
   const parentToChildren = new Map<string, string[]>();
@@ -105,8 +114,8 @@ export function buildFamilyGraphLayout(
     if (children.length > 1) {
       // Sort siblings strictly by horizontal X position (left to right)
       children.sort((aId, bId) => {
-        const xA = dagreGraph.node(aId)?.x ?? 0;
-        const xB = dagreGraph.node(bId)?.x ?? 0;
+        const xA = getPersonX(aId);
+        const xB = getPersonX(bId);
         return xA - xB;
       });
 
@@ -164,50 +173,43 @@ export function buildFamilyGraphLayout(
     };
   });
 
-  // Map edges for React Flow
-  const edges: Edge[] = inferredRelationships.map((rel) => {
+  // Filter non-sibling relationships for initial layout edge mapping
+  const nonSiblingRelationships = visibleRelationships.filter((rel) => {
+    const isSibling =
+      !rel.type.toLowerCase().includes("spouse") &&
+      !rel.type.toLowerCase().includes("patni") &&
+      !rel.type.toLowerCase().includes("pati") &&
+      !rel.type.toLowerCase().includes("wife") &&
+      !rel.type.toLowerCase().includes("husband") &&
+      (rel.type.toLowerCase().includes("sibling") ||
+        rel.type.toLowerCase().includes("brother") ||
+        rel.type.toLowerCase().includes("sister") ||
+        rel.type.toLowerCase().includes("bhai") ||
+        rel.type.toLowerCase().includes("behen"));
+    return !isSibling;
+  });
+
+  // Map non-sibling edges for React Flow
+  const nonSiblingEdges: Edge[] = nonSiblingRelationships.map((rel) => {
     const isSpouse =
       rel.type.toLowerCase().includes("spouse") ||
       rel.type.toLowerCase().includes("patni") ||
       rel.type.toLowerCase().includes("pati") ||
       rel.type.toLowerCase().includes("wife") ||
       rel.type.toLowerCase().includes("husband");
-    const isSibling =
-      !isSpouse &&
-      (rel.type.toLowerCase().includes("sibling") ||
-        rel.type.toLowerCase().includes("brother") ||
-        rel.type.toLowerCase().includes("sister") ||
-        rel.type.toLowerCase().includes("bhai") ||
-        rel.type.toLowerCase().includes("behen"));
-
-    let sourceId = rel.fromId;
-    let targetId = rel.toId;
-
-    if (isSibling) {
-      const xFrom = dagreGraph.node(rel.fromId)?.x ?? 0;
-      const xTo = dagreGraph.node(rel.toId)?.x ?? 0;
-      if (xFrom > xTo) {
-        sourceId = rel.toId;
-        targetId = rel.fromId;
-      }
-    }
-
-    const sourceHandle = isSpouse || isSibling ? "right" : "bottom";
-    const targetHandle = isSpouse || isSibling ? "left" : "top";
 
     return {
       id: rel.id,
-      source: sourceId,
-      target: targetId,
-      sourceHandle,
-      targetHandle,
+      source: rel.fromId,
+      target: rel.toId,
+      sourceHandle: isSpouse ? "right" : "bottom",
+      targetHandle: isSpouse ? "left" : "top",
       label: rel.type,
       type: "smoothstep",
       animated: isSpouse,
       style: {
-        stroke: isSpouse ? "#e11d48" : isSibling ? "#8b5cf6" : "#2563eb",
+        stroke: isSpouse ? "#e11d48" : "#2563eb",
         strokeWidth: 2,
-        strokeDasharray: isSibling ? "4,4" : undefined,
       },
       labelStyle: {
         fill: "#475569",
@@ -224,5 +226,140 @@ export function buildFamilyGraphLayout(
     };
   });
 
-  return { nodes, edges };
+  // Compute clean left-to-right sibling edges using Universal Sibling Engine
+  const siblingEdges = computeSiblingEdges(nodes, visibleRelationships);
+
+  return { nodes, edges: [...nonSiblingEdges, ...siblingEdges] };
+}
+
+export function computeSiblingEdges(
+  nodes: Node<PersonNodeData>[],
+  relationships: FamilyRelationshipView[]
+): Edge[] {
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  const getPersonX = (id: string) => {
+    const n = nodeMap.get(id);
+    return (n?.position?.x ?? 0) + NODE_WIDTH / 2;
+  };
+
+  // Group children by parent bi-directionally
+  const childToParents = new Map<string, Set<string>>();
+  relationships.forEach((rel) => {
+    const t = rel.type.toLowerCase();
+    if (
+      t.includes("parent") ||
+      t.includes("pita") ||
+      t.includes("mata") ||
+      t.includes("mother") ||
+      t.includes("father")
+    ) {
+      // fromId is Parent, toId is Child
+      const parents = childToParents.get(rel.toId) || new Set();
+      parents.add(rel.fromId);
+      childToParents.set(rel.toId, parents);
+    } else if (
+      t.includes("child") ||
+      t.includes("bache") ||
+      t.includes("son") ||
+      t.includes("daughter") ||
+      t.includes("beta") ||
+      t.includes("beti")
+    ) {
+      // fromId is Child, toId is Parent
+      const parents = childToParents.get(rel.fromId) || new Set();
+      parents.add(rel.toId);
+      childToParents.set(rel.fromId, parents);
+    }
+  });
+
+  // Group children that share at least 1 common parent
+  const siblingGroups: Set<string>[] = [];
+  childToParents.forEach((parents, childId) => {
+    let matchedGroup = siblingGroups.find((group) =>
+      Array.from(group).some((existingChild) => {
+        const existingParents = childToParents.get(existingChild);
+        return Array.from(parents).some((p) => existingParents?.has(p));
+      })
+    );
+    if (matchedGroup) {
+      matchedGroup.add(childId);
+    } else {
+      siblingGroups.push(new Set([childId]));
+    }
+  });
+
+  const siblingEdges: Edge[] = [];
+
+  // Inferred sibling edges for every parent-child family group
+  siblingGroups.forEach((group) => {
+    const children = Array.from(group).filter((id) => nodeMap.has(id));
+    if (children.length > 1) {
+      children.sort((aId, bId) => getPersonX(aId) - getPersonX(bId));
+
+      for (let i = 0; i < children.length - 1; i++) {
+        const leftId = children[i];
+        const rightId = children[i + 1];
+        siblingEdges.push({
+          id: `inferred-sibling-${leftId}-${rightId}`,
+          source: leftId,
+          target: rightId,
+          sourceHandle: "right",
+          targetHandle: "left",
+          label: "Sibling of",
+          type: "smoothstep",
+          style: { stroke: "#8b5cf6", strokeWidth: 2, strokeDasharray: "4,4" },
+          labelStyle: { fill: "#475569", fontWeight: 600, fontSize: 11 },
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.9, rx: 6, ry: 6 },
+          labelBgPadding: [6, 4],
+        });
+      }
+    }
+  });
+
+  // Standalone explicit sibling relationships (no parent present)
+  relationships.forEach((rel) => {
+    const isSibling =
+      !rel.type.toLowerCase().includes("spouse") &&
+      !rel.type.toLowerCase().includes("patni") &&
+      !rel.type.toLowerCase().includes("pati") &&
+      !rel.type.toLowerCase().includes("wife") &&
+      !rel.type.toLowerCase().includes("husband") &&
+      (rel.type.toLowerCase().includes("sibling") ||
+        rel.type.toLowerCase().includes("brother") ||
+        rel.type.toLowerCase().includes("sister") ||
+        rel.type.toLowerCase().includes("bhai") ||
+        rel.type.toLowerCase().includes("behen"));
+
+    if (isSibling && nodeMap.has(rel.fromId) && nodeMap.has(rel.toId)) {
+      const xFrom = getPersonX(rel.fromId);
+      const xTo = getPersonX(rel.toId);
+      const leftId = xFrom <= xTo ? rel.fromId : rel.toId;
+      const rightId = xFrom <= xTo ? rel.toId : rel.fromId;
+
+      const alreadyCovered = siblingEdges.some(
+        (e) =>
+          (e.source === leftId && e.target === rightId) ||
+          (e.source === rightId && e.target === leftId)
+      );
+
+      if (!alreadyCovered) {
+        siblingEdges.push({
+          id: rel.id,
+          source: leftId,
+          target: rightId,
+          sourceHandle: "right",
+          targetHandle: "left",
+          label: rel.type,
+          type: "smoothstep",
+          style: { stroke: "#8b5cf6", strokeWidth: 2, strokeDasharray: "4,4" },
+          labelStyle: { fill: "#475569", fontWeight: 600, fontSize: 11 },
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.9, rx: 6, ry: 6 },
+          labelBgPadding: [6, 4],
+        });
+      }
+    }
+  });
+
+  return siblingEdges;
 }

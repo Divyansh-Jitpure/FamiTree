@@ -262,78 +262,6 @@ function TreeBoardInner({
     type: string;
   }>({ isOpen: false, edgeId: "", fromName: "", toName: "", type: "" });
 
-  const handleNodeDrag = useCallback(
-    (_event: MouseEvent | TouchEvent, _draggedNode: Node, currentNodes: Node[]) => {
-      const typedNodes = currentNodes;
-      const parentToChildren = new Map<string, string[]>();
-      relationships.forEach((rel) => {
-        if (rel.type.toLowerCase().includes("parent")) {
-          const children = parentToChildren.get(rel.fromId) || [];
-          if (!children.includes(rel.toId)) children.push(rel.toId);
-          parentToChildren.set(rel.fromId, children);
-        }
-      });
-
-      const nodeMap = new Map(typedNodes.map((n) => [n.id, n]));
-      const nonSiblingEdges = edges.filter((e) => !e.id.startsWith("inferred-sibling-"));
-      const newSiblingEdges: Edge[] = [];
-
-      parentToChildren.forEach((children) => {
-        if (children.length > 1) {
-          children.sort((aId, bId) => {
-            const xA = nodeMap.get(aId)?.position.x ?? 0;
-            const xB = nodeMap.get(bId)?.position.x ?? 0;
-            return xA - xB;
-          });
-
-          for (let i = 0; i < children.length - 1; i++) {
-            const c1 = children[i];
-            const c2 = children[i + 1];
-            newSiblingEdges.push({
-              id: `inferred-sibling-${c1}-${c2}`,
-              source: c1,
-              target: c2,
-              sourceHandle: "right",
-              targetHandle: "left",
-              label: "Sibling of",
-              type: "smoothstep",
-              style: {
-                stroke: "#8b5cf6",
-                strokeWidth: 2,
-                strokeDasharray: "4,4",
-              },
-              labelStyle: { fill: "#475569", fontWeight: 600, fontSize: 11 },
-              labelBgStyle: { fill: "#ffffff", fillOpacity: 0.9, rx: 6, ry: 6 },
-              labelBgPadding: [6, 4],
-            });
-          }
-        }
-      });
-
-      // Also ensure all non-inferred sibling edges strictly point from left node to right node
-      const normalizedNonSiblingEdges = nonSiblingEdges.map((edge) => {
-        const isSiblingEdge = edge.label === "Sibling of";
-        if (isSiblingEdge) {
-          const xSource = nodeMap.get(edge.source)?.position.x ?? 0;
-          const xTarget = nodeMap.get(edge.target)?.position.x ?? 0;
-          if (xSource > xTarget) {
-            return {
-              ...edge,
-              source: edge.target,
-              target: edge.source,
-              sourceHandle: "right",
-              targetHandle: "left",
-            };
-          }
-        }
-        return edge;
-      });
-
-      setEdges([...normalizedNonSiblingEdges, ...newSiblingEdges]);
-    },
-    [relationships, edges, setEdges]
-  );
-
   const handleEdgeClick = useCallback(
     (event: React.MouseEvent, edge: { id: string }) => {
       event.stopPropagation();
@@ -353,6 +281,7 @@ function TreeBoardInner({
     },
     [relationships, people]
   );
+
 
   const handleNodeDragStop = useCallback(
     (_event: MouseEvent | TouchEvent, draggedNode: Node) => {
@@ -472,7 +401,7 @@ function TreeBoardInner({
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
         onEdgeClick={handleEdgeClick}
-        onNodeDrag={handleNodeDrag}
+
         onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
